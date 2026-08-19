@@ -1,0 +1,3438 @@
+```html
+<!doctype html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>IronForge PRO — Offline Strength Tracker</title>
+<link rel="manifest" href="./manifest.json">
+<meta name="theme-color" content="#020617">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <!-- Tailwind CSS v4 (Play CDN / Browser build) -->
+  <script>
+    // Quiet Tailwind browser build warnings (if any)
+    window.__TAILWIND_BROWSER_DISABLE_WARNINGS__ = true;
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+
+  <!-- Offline-first fallback CSS (app stays usable/styled without CDN; Tailwind enhances when available) -->
+  <style>
+    :root{
+      --bg:#020617;           /* slate-950 */
+      --panel: rgba(15, 23, 42, .55); /* slate-900-ish */
+      --panel2: rgba(2, 6, 23, .35);
+      --border: rgba(148, 163, 184, .18);
+      --text:#e2e8f0;         /* slate-200 */
+      --muted:#94a3b8;        /* slate-400 */
+      --cyan:#22d3ee;
+      --purple:#a855f7;
+      --emerald:#34d399;
+      --rose:#fb7185;
+      --amber:#fbbf24;
+      --shadow: 0 20px 60px rgba(0,0,0,.55);
+      --glow-cyan: 0 0 0 1px rgba(34,211,238,.12), 0 0 24px rgba(34,211,238,.10);
+      --glow-purple: 0 0 0 1px rgba(168,85,247,.12), 0 0 24px rgba(168,85,247,.10);
+    }
+    *{ box-sizing: border-box; }
+    html, body { height: 100%; }
+    body{
+      margin:0;
+      background: radial-gradient(1200px 800px at 20% 10%, rgba(34,211,238,.08), transparent 55%),
+                  radial-gradient(900px 700px at 80% 20%, rgba(168,85,247,.08), transparent 55%),
+                  radial-gradient(900px 700px at 50% 90%, rgba(52,211,153,.06), transparent 55%),
+                  var(--bg);
+      color: var(--text);
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji";
+      overflow: hidden;
+    }
+    a { color: inherit; }
+    .app { height: 100%; display:flex; }
+    .sidebar{
+      width: 290px; min-width: 290px;
+      padding: 14px;
+      border-right: 1px solid var(--border);
+      background: linear-gradient(180deg, rgba(15,23,42,.45), rgba(2,6,23,.15));
+      backdrop-filter: blur(14px);
+    }
+    .main{ flex:1; display:flex; flex-direction:column; min-width: 0; }
+    .topbar{
+      display:flex; align-items:center; justify-content:space-between;
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--border);
+      background: linear-gradient(180deg, rgba(2,6,23,.35), rgba(2,6,23,.18));
+      backdrop-filter: blur(14px);
+    }
+    .content{ flex:1; overflow:auto; padding: 14px; }
+    .panel{
+      background: linear-gradient(180deg, var(--panel), var(--panel2));
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow);
+      border-radius: 16px;
+      backdrop-filter: blur(14px);
+    }
+    .panel.soft { box-shadow: none; }
+    .panel.glow-cyan{ box-shadow: var(--shadow), var(--glow-cyan); }
+    .panel.glow-purple{ box-shadow: var(--shadow), var(--glow-purple); }
+    .row { display:flex; gap: 10px; align-items:center; flex-wrap:wrap; }
+    .stack { display:flex; flex-direction:column; gap: 10px; }
+    .muted { color: var(--muted); }
+    .btn{
+      cursor:pointer;
+      border: 1px solid var(--border);
+      background: rgba(15,23,42,.35);
+      color: var(--text);
+      padding: 9px 12px;
+      border-radius: 12px;
+      transition: transform .05s ease, background .15s ease, border-color .15s ease, box-shadow .15s ease;
+      display:inline-flex; align-items:center; gap: 8px;
+      user-select: none;
+    }
+    .btn:hover{ background: rgba(15,23,42,.55); border-color: rgba(148,163,184,.28); }
+    .btn:active{ transform: translateY(1px); }
+    .btn.primary{
+      border-color: rgba(34,211,238,.35);
+      background: linear-gradient(180deg, rgba(34,211,238,.14), rgba(168,85,247,.10));
+      box-shadow: 0 0 0 1px rgba(34,211,238,.10), 0 14px 40px rgba(0,0,0,.35);
+    }
+    .btn.danger{
+      border-color: rgba(251,113,133,.35);
+      background: linear-gradient(180deg, rgba(251,113,133,.14), rgba(15,23,42,.25));
+    }
+    .btn.good{
+      border-color: rgba(52,211,153,.35);
+      background: linear-gradient(180deg, rgba(52,211,153,.14), rgba(15,23,42,.25));
+    }
+    .btn.ghost{ background: transparent; }
+    .pill{
+      padding: 6px 10px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: rgba(2,6,23,.25);
+      display:inline-flex; align-items:center; gap: 8px;
+      font-size: 12px;
+    }
+    .badge{
+      font-size: 12px;
+      padding: 5px 10px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: rgba(15,23,42,.35);
+      display:inline-flex; align-items:center; gap: 6px;
+      white-space: nowrap;
+    }
+    .badge.cyan{ border-color: rgba(34,211,238,.35); color: #a5f3fc; }
+    .badge.purple{ border-color: rgba(168,85,247,.35); color: #e9d5ff; }
+    .badge.emerald{ border-color: rgba(52,211,153,.35); color: #bbf7d0; }
+    .badge.rose{ border-color: rgba(251,113,133,.35); color: #fecdd3; }
+    .input, .select, .textarea{
+      width: 100%;
+      background: rgba(2,6,23,.35);
+      border: 1px solid var(--border);
+      color: var(--text);
+      border-radius: 12px;
+      padding: 10px 12px;
+      outline: none;
+    }
+    .input:focus, .select:focus, .textarea:focus{
+      border-color: rgba(34,211,238,.35);
+      box-shadow: 0 0 0 3px rgba(34,211,238,.10);
+    }
+    .textarea{ min-height: 70px; resize: vertical; }
+    table{ width:100%; border-collapse: collapse; }
+    th, td { padding: 10px 10px; border-bottom: 1px solid rgba(148,163,184,.14); vertical-align: middle; }
+    th { text-align:left; font-size: 12px; color: var(--muted); font-weight: 600; letter-spacing: .02em; }
+    .kpi{
+      padding: 12px;
+      border-radius: 16px;
+      border: 1px solid var(--border);
+      background: rgba(2,6,23,.22);
+    }
+    .kpi .v{ font-size: 20px; font-weight: 700; }
+    .grid2{ display:grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 10px; }
+    .grid3{ display:grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 10px; }
+    .grid4{ display:grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 10px; }
+    .hr{ height:1px; background: rgba(148,163,184,.14); margin: 12px 0; }
+    .navbtn{
+      width: 100%;
+      justify-content: space-between;
+      padding: 10px 12px;
+      border-radius: 14px;
+    }
+    .navbtn.active{
+      border-color: rgba(34,211,238,.35);
+      background: linear-gradient(180deg, rgba(34,211,238,.12), rgba(168,85,247,.07));
+      box-shadow: 0 0 0 1px rgba(34,211,238,.08);
+    }
+    .mono{ font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
+    .small{ font-size: 12px; }
+    .hscroll { overflow:auto; }
+    dialog{
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      background: rgba(2,6,23,.78);
+      color: var(--text);
+      backdrop-filter: blur(18px);
+      box-shadow: var(--shadow), 0 0 0 1px rgba(34,211,238,.10);
+      width: min(920px, calc(100vw - 24px));
+    }
+    dialog::backdrop{
+      background: rgba(0,0,0,.62);
+      backdrop-filter: blur(6px);
+    }
+    .toast{
+      position: fixed; right: 14px; bottom: 14px;
+      width: min(460px, calc(100vw - 28px));
+      z-index: 50;
+      display:flex; flex-direction:column; gap: 10px;
+      pointer-events: none;
+    }
+    .toast .item{
+      pointer-events: auto;
+      padding: 12px 12px;
+      border-radius: 16px;
+      border: 1px solid var(--border);
+      background: rgba(2,6,23,.65);
+      backdrop-filter: blur(12px);
+      box-shadow: var(--shadow), 0 0 0 1px rgba(34,211,238,.08);
+      display:flex; align-items:flex-start; justify-content:space-between; gap: 10px;
+    }
+    .barwrap{
+      height: 160px;
+      display:flex; gap: 10px; align-items:flex-end;
+      padding: 10px;
+      border-radius: 16px;
+      border: 1px solid rgba(148,163,184,.14);
+      background: rgba(2,6,23,.22);
+      overflow:hidden;
+    }
+    .bar{
+      width: 100%;
+      min-width: 22px;
+      border-radius: 10px 10px 10px 10px;
+      background: linear-gradient(180deg, rgba(34,211,238,.75), rgba(168,85,247,.45));
+      box-shadow: 0 0 0 1px rgba(34,211,238,.12);
+      position: relative;
+    }
+    .bar .lbl{
+      position:absolute; bottom: -18px; left: 50%;
+      transform: translateX(-50%);
+      font-size: 11px; color: var(--muted);
+      white-space: nowrap;
+    }
+    .progressRing{
+      width: 42px; height: 42px; border-radius: 999px;
+      background: conic-gradient(rgba(34,211,238,.85) var(--p,0%), rgba(148,163,184,.14) 0%);
+      display:grid; place-items:center;
+      border: 1px solid rgba(148,163,184,.18);
+      box-shadow: 0 0 0 1px rgba(34,211,238,.08);
+    }
+    .progressRing > div{
+      width: 32px; height: 32px; border-radius: 999px;
+      background: rgba(2,6,23,.55);
+      border: 1px solid rgba(148,163,184,.14);
+      display:grid; place-items:center;
+      font-size: 11px;
+    }
+    .hide { display:none !important; }
+
+    /* Responsive: collapse sidebar on small */
+    @media (max-width: 980px){
+      body{ overflow:auto; }
+      .app{ flex-direction: column; overflow:auto; height:auto; min-height: 100%; }
+      .sidebar{ width:100%; min-width: 0; border-right: none; border-bottom: 1px solid var(--border); }
+      .main{ min-height: calc(100vh - 150px); }
+      .grid4{ grid-template-columns: repeat(2, minmax(0,1fr)); }
+      .grid3{ grid-template-columns: repeat(2, minmax(0,1fr)); }
+    }
+  </style>
+</head>
+
+<body class="bg-slate-950 text-slate-100">
+  <div class="app">
+    <aside class="sidebar">
+      <div class="panel soft" style="padding:12px;">
+        <div class="row" style="justify-content: space-between;">
+          <div class="row" style="gap:12px; align-items:center;">
+            <div class="panel soft glow-cyan" style="width:44px;height:44px;border-radius:14px;display:grid;place-items:center;border:1px solid rgba(34,211,238,.25);background:linear-gradient(180deg, rgba(34,211,238,.14), rgba(168,85,247,.10));">
+              <i data-lucide="anvil" style="width:20px;height:20px;"></i>
+            </div>
+            <div class="stack" style="gap:2px;">
+              <div style="font-weight:800; letter-spacing:.02em;">
+                IronForge <span style="color: #67e8f9;">PRO</span>
+              </div>
+              <div class="muted small">Offline • localStorage • SPA</div>
+            </div>
+          </div>
+          <div class="pill mono" id="storageIndicator" title="Stan zapisu w localStorage">
+            <i data-lucide="database" style="width:14px;height:14px;"></i>
+            <span id="storageStatus">OK</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="hr"></div>
+
+      <nav class="stack" style="gap:8px;" id="nav"></nav>
+
+      <div class="hr"></div>
+
+      <div class="panel soft" style="padding:12px;">
+        <div class="row" style="justify-content: space-between;">
+          <div class="stack" style="gap:4px;">
+            <div class="small muted">Aktywna sesja</div>
+            <div id="activeSessionMini" class="mono small">—</div>
+          </div>
+          <button class="btn primary" data-action="go-session">
+            <i data-lucide="dumbbell" style="width:16px;height:16px;"></i>
+            Trening
+          </button>
+        </div>
+        <div class="hr"></div>
+        <div class="row" style="justify-content: space-between; align-items:flex-start;">
+          <div class="stack" style="gap:6px; flex:1;">
+            <div class="small muted">Szybka kopia</div>
+            <div class="row">
+              <button class="btn" data-action="export-json">
+                <i data-lucide="download" style="width:16px;height:16px;"></i>
+                Eksport
+              </button>
+              <button class="btn" data-action="open-import">
+                <i data-lucide="upload" style="width:16px;height:16px;"></i>
+                Import
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="hr"></div>
+
+      <div class="panel soft" style="padding:12px;">
+        <div class="row" style="justify-content: space-between;">
+          <div class="small muted">Wersja danych</div>
+          <div class="badge cyan mono" id="dataVersion">v1</div>
+        </div>
+      </div>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <div class="stack" style="gap:2px;">
+          <div class="row" style="gap:10px;">
+            <div class="badge purple" id="routeBadge">
+              <i data-lucide="sparkles" style="width:14px;height:14px;"></i>
+              <span id="routeTitle">TRENINGI</span>
+            </div>
+            <div class="badge cyan mono" id="nowBadge"></div>
+          </div>
+          <div class="small muted" id="routeSubtitle">Aktywna sesja — edycja serii w locie, autozapis</div>
+        </div>
+
+        <div class="row" style="justify-content:flex-end;">
+          <div class="panel soft" style="padding:8px 10px; border-radius: 16px; border:1px solid rgba(148,163,184,.14); background: rgba(2,6,23,.22);">
+            <div class="row" style="gap:10px;">
+              <div class="row" style="gap:10px;">
+                <div class="progressRing" id="restRing" style="--p:0%;">
+                  <div class="mono" id="restRingText">0%</div>
+                </div>
+                <div class="stack" style="gap:2px;">
+                  <div class="small muted">Timer odpoczynku</div>
+                  <div class="row" style="gap:8px; align-items:baseline;">
+                    <div class="mono" id="restLabel">—</div>
+                    <span class="small muted" id="restHint"></span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="row" style="gap:8px;">
+                <button class="btn" data-action="rest-preset" data-sec="60">60s</button>
+                <button class="btn" data-action="rest-preset" data-sec="90">90s</button>
+                <button class="btn" data-action="rest-preset" data-sec="120">120s</button>
+                <button class="btn" data-action="rest-custom">
+                  <i data-lucide="timer" style="width:16px;height:16px;"></i>
+                  Własny
+                </button>
+                <button class="btn danger" data-action="rest-skip" title="Pomiń timer">
+                  <i data-lucide="skip-forward" style="width:16px;height:16px;"></i>
+                </button>
+              </div>
+
+              <div class="hr" style="margin: 0 8px; width:1px; height:42px; background: rgba(148,163,184,.14)"></div>
+
+              <div class="stack" style="gap:2px; min-width: 190px;">
+                <div class="small muted">Stoper treningu</div>
+                <div class="row" style="justify-content: space-between;">
+                  <div class="mono" id="workoutStopwatch">00:00:00</div>
+                  <button class="btn good" data-action="finish-workout" title="Zakończ i zapisz w historii">
+                    <i data-lucide="flag" style="width:16px;height:16px;"></i>
+                    Zakończ
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <button class="btn primary" data-action="quick-new-workout" title="Nowy trening (pusty)">
+            <i data-lucide="plus" style="width:16px;height:16px;"></i>
+            Nowy
+          </button>
+        </div>
+      </header>
+
+      <section class="content" id="view"></section>
+    </main>
+  </div>
+
+  <!-- Exercise picker dialog (used by Session + Plan editor) -->
+  <dialog id="exercisePicker">
+    <form method="dialog" style="padding:14px;">
+      <div class="row" style="justify-content: space-between;">
+        <div class="stack" style="gap:3px;">
+          <div class="row" style="gap:10px;">
+            <div class="badge cyan">
+              <i data-lucide="search" style="width:14px;height:14px;"></i>
+              <span>Wybierz ćwiczenie</span>
+            </div>
+            <div class="badge purple" id="pickerContextBadge">—</div>
+          </div>
+          <div class="small muted">Kliknij pozycję, aby dodać. Działa offline.</div>
+        </div>
+        <button class="btn" value="cancel">
+          <i data-lucide="x" style="width:16px;height:16px;"></i>
+          Zamknij
+        </button>
+      </div>
+
+      <div class="hr"></div>
+
+      <div class="grid2">
+        <div class="stack">
+          <label class="small muted">Szukaj</label>
+          <input class="input" id="pickerSearch" placeholder="np. Wyciskanie, Przysiad..." />
+        </div>
+        <div class="stack">
+          <label class="small muted">Kategoria</label>
+          <select class="select" id="pickerCategory">
+            <option value="">Wszystkie</option>
+            <option>Klatka</option>
+            <option>Plecy</option>
+            <option>Nogi</option>
+            <option>Barki</option>
+            <option>Biceps</option>
+            <option>Triceps</option>
+            <option>Brzuch</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="hr"></div>
+
+      <div class="panel soft" style="padding: 10px; max-height: 55vh; overflow:auto;">
+        <table>
+          <thead>
+            <tr>
+              <th>Nazwa</th>
+              <th>Kategoria</th>
+              <th>Opis</th>
+              <th>Alternatywy</th>
+              <th style="text-align:right;">Akcja</th>
+            </tr>
+          </thead>
+          <tbody id="pickerTbody"></tbody>
+        </table>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- Custom rest dialog -->
+  <dialog id="customRestDialog">
+    <form method="dialog" style="padding:14px;">
+      <div class="row" style="justify-content: space-between;">
+        <div class="badge cyan">
+          <i data-lucide="timer" style="width:14px;height:14px;"></i>
+          <span>Własny timer odpoczynku</span>
+        </div>
+        <button class="btn" value="cancel">
+          <i data-lucide="x" style="width:16px;height:16px;"></i>
+          Zamknij
+        </button>
+      </div>
+      <div class="hr"></div>
+      <div class="grid2">
+        <div class="stack">
+          <label class="small muted">Sekundy</label>
+          <input class="input mono" id="customRestSeconds" type="number" min="5" step="5" value="90">
+        </div>
+        <div class="stack">
+          <label class="small muted">Ustaw jako domyślne</label>
+          <label class="btn" style="justify-content:flex-start;">
+            <input type="checkbox" id="customRestDefault" style="accent-color: var(--cyan);">
+            <span class="small">Tak, ustaw <span class="mono">default</span></span>
+          </label>
+        </div>
+      </div>
+      <div class="hr"></div>
+      <div class="row" style="justify-content:flex-end;">
+        <button class="btn primary" value="ok" data-action="custom-rest-apply">
+          <i data-lucide="play" style="width:16px;height:16px;"></i>
+          Start
+        </button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- Import JSON dialog -->
+  <dialog id="importDialog">
+    <form method="dialog" style="padding:14px;">
+      <div class="row" style="justify-content: space-between;">
+        <div class="badge purple">
+          <i data-lucide="upload" style="width:14px;height:14px;"></i>
+          <span>Import z JSON (nadpisuje localStorage)</span>
+        </div>
+        <button class="btn" value="cancel">
+          <i data-lucide="x" style="width:16px;height:16px;"></i>
+          Zamknij
+        </button>
+      </div>
+      <div class="hr"></div>
+      <div class="stack">
+        <label class="small muted">Wybierz plik eksportu IronForge PRO</label>
+        <input class="input" id="importFile" type="file" accept="application/json">
+        <div class="small muted">Uwaga: import nadpisuje całą bazę ćwiczeń, plany i historię.</div>
+      </div>
+      <div class="hr"></div>
+      <div class="row" style="justify-content:flex-end;">
+        <button class="btn danger" value="ok" data-action="import-json">
+          <i data-lucide="alert-triangle" style="width:16px;height:16px;"></i>
+          Importuj i nadpisz
+        </button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- Toasts -->
+  <div class="toast" id="toast"></div>
+
+  <script>
+    ;(() => {
+      'use strict';
+
+      // ----------------------------
+      // Utilities
+      // ----------------------------
+      const STORAGE_KEY = 'ironforgepro.v1';
+      const clamp = (n, a, b) => Math.max(a, Math.min(b, n));
+      const pad2 = (n) => String(n).padStart(2, '0');
+      const fmtDate = (ts) => {
+        const d = new Date(ts);
+        return `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`;
+      };
+      const fmtDateTime = (ts) => {
+        const d = new Date(ts);
+        return `${fmtDate(ts)} ${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
+      };
+      const fmtDuration = (sec) => {
+        sec = Math.max(0, Math.floor(sec));
+        const h = Math.floor(sec / 3600);
+        const m = Math.floor((sec % 3600) / 60);
+        const s = sec % 60;
+        return `${pad2(h)}:${pad2(m)}:${pad2(s)}`;
+      };
+      const fmtCompactDuration = (sec) => {
+        sec = Math.max(0, Math.floor(sec));
+        const h = Math.floor(sec / 3600);
+        const m = Math.floor((sec % 3600) / 60);
+        const s = sec % 60;
+        if (h > 0) return `${h}h ${m}m`;
+        if (m > 0) return `${m}m ${s}s`;
+        return `${s}s`;
+      };
+      const round1 = (n) => Math.round((Number(n) || 0) * 10) / 10;
+      const round0 = (n) => Math.round((Number(n) || 0));
+      const safeNum = (v, def=0) => {
+        const n = Number(v);
+        return Number.isFinite(n) ? n : def;
+      };
+      const uid = (p='id') => `${p}_${Math.random().toString(16).slice(2)}_${Date.now().toString(16)}`;
+      const startOfDay = (d) => {
+        const x = new Date(d);
+        x.setHours(0,0,0,0);
+        return x;
+      };
+      const startOfWeekMon = (ts) => {
+        const d = startOfDay(new Date(ts));
+        const day = (d.getDay() + 6) % 7; // 0=Mon
+        d.setDate(d.getDate() - day);
+        return d;
+      };
+      const weekKey = (ts) => {
+        const d = startOfWeekMon(ts);
+        return `${d.getFullYear()}-W${pad2(Math.ceil((((d - new Date(d.getFullYear(),0,1)) / 86400000) + 1) / 7))}`;
+      };
+      const deepClone = (x) => JSON.parse(JSON.stringify(x));
+
+      function toast(msg, type='info', timeout=3600){
+        const host = document.getElementById('toast');
+        const id = uid('toast');
+        const color = type === 'success' ? 'badge emerald' :
+                      type === 'danger' ? 'badge rose' :
+                      type === 'warn' ? 'badge' : 'badge cyan';
+        const icon = type === 'success' ? 'check-circle' :
+                     type === 'danger' ? 'x-circle' :
+                     type === 'warn' ? 'alert-triangle' : 'info';
+        const el = document.createElement('div');
+        el.className = 'item';
+        el.id = id;
+        el.innerHTML = `
+          <div class="stack" style="gap:6px; min-width:0;">
+            <div class="${color}">
+              <i data-lucide="${icon}" style="width:14px;height:14px;"></i>
+              <span>${escapeHtml(msg)}</span>
+            </div>
+            <div class="small muted">Kliknij ✕ aby zamknąć</div>
+          </div>
+          <button class="btn" data-action="toast-close" data-id="${id}">
+            <i data-lucide="x" style="width:16px;height:16px;"></i>
+          </button>
+        `;
+        host.appendChild(el);
+        refreshIcons();
+        if (timeout > 0){
+          setTimeout(() => {
+            const cur = document.getElementById(id);
+            if (cur) cur.remove();
+          }, timeout);
+        }
+      }
+
+      function escapeHtml(s){
+        return String(s).replace(/[&<>"']/g, (c) => ({
+          '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'
+        }[c]));
+      }
+
+      // ----------------------------
+      // Fallback icons (if Lucide fails offline)
+      // ----------------------------
+      const fallbackIcons = {
+        'anvil': `<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 15h16"/><path d="M7 15l2-6h6l2 6"/><path d="M9 9V7a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2"/></svg>`,
+        'database': `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v6c0 1.7 4 3 9 3s9-1.3 9-3V5"/><path d="M3 11v6c0 1.7 4 3 9 3s9-1.3 9-3v-6"/></svg>`,
+        'sparkles': `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l1.5 4.5L18 8l-4.5 1.5L12 14l-1.5-4.5L6 8l4.5-1.5L12 2z"/><path d="M19 13l.8 2.4L22 16l-2.2.6L19 19l-.8-2.4L16 16l2.2-.6L19 13z"/></svg>`,
+      };
+      function refreshIcons(){
+        try{
+          if (window.lucide && typeof window.lucide.createIcons === 'function'){
+            window.lucide.createIcons();
+            return;
+          }
+        }catch(_){}
+        // fallback: replace <i data-lucide="..."> with inline svg when possible
+        document.querySelectorAll('i[data-lucide]').forEach(i => {
+          const name = i.getAttribute('data-lucide');
+          if (i.__fallbackApplied) return;
+          if (fallbackIcons[name]){
+            i.outerHTML = `<span style="display:inline-flex;align-items:center;justify-content:center;color:inherit;">${fallbackIcons[name]}</span>`;
+          } else {
+            // leave as-is (empty)
+            i.__fallbackApplied = true;
+          }
+        });
+      }
+
+      // ----------------------------
+      // Data model
+      // ----------------------------
+      const BUILTIN_EXERCISES = [
+        { name:'Wyciskanie sztangi leżąc', category:'Klatka', primary:'Klatka', alts:['Wyciskanie hantli', 'Pompki na poręczach'], desc:'Klasyczny ruch poziomy. Kontroluj tor i łopatki.' },
+        { name:'Wyciskanie hantli na skosie', category:'Klatka', primary:'Klatka', alts:['Wyciskanie sztangi skos', 'Rozpiętki'], desc:'Skos dodatni. Stabilny zakres i kontrola.' },
+        { name:'Rozpiętki na bramie', category:'Klatka', primary:'Klatka', alts:['Rozpiętki hantle', 'Pompki'], desc:'Stałe napięcie, wolna faza ekscentryczna.' },
+
+        { name:'Podciąganie', category:'Plecy', primary:'Plecy', alts:['Ściąganie drążka', 'Wiosłowanie'], desc:'Pełny zwis, klatka do drążka (jeśli możliwe).' },
+        { name:'Wiosłowanie sztangą', category:'Plecy', primary:'Plecy', alts:['Wiosłowanie hantlą', 'Seal row'], desc:'Hinge w biodrze, łokcie w tył, neutralny kręgosłup.' },
+        { name:'Ściąganie drążka do klatki', category:'Plecy', primary:'Plecy', alts:['Podciąganie', 'Pullover'], desc:'Ściągaj łopatki w dół, nie bujaj tułowiem.' },
+
+        { name:'Przysiad tylni', category:'Nogi', primary:'Nogi', alts:['Front squat', 'Hack squat'], desc:'Stabilny core, kolana nad stopami, pełna kontrola.' },
+        { name:'Martwy ciąg', category:'Nogi', primary:'Nogi', alts:['RDL', 'Trap bar deadlift'], desc:'Napięty grzbiet, sztanga blisko ciała, kontrola startu.' },
+        { name:'RDL (martwy ciąg na prostych nogach)', category:'Nogi', primary:'Nogi', alts:['Hip hinge z hantlami', 'Good morning'], desc:'Biodra w tył, czuj dwugłowe, nie zaokrąglaj.' },
+
+        { name:'Wyciskanie żołnierskie', category:'Barki', primary:'Barki', alts:['Arnold press', 'Maszyna shoulder press'], desc:'Brzuch napięty, brak przeprostu, łokcie pod sztangą.' },
+        { name:'Unoszenia bokiem', category:'Barki', primary:'Barki', alts:['Unoszenia na wyciągu', 'Maszyna'], desc:'Lekko ugięte łokcie, prowadź dłonie po łuku.' },
+
+        { name:'Uginanie ramion ze sztangą', category:'Biceps', primary:'Biceps', alts:['Hantle supinacja', 'Modlitewnik'], desc:'Bez bujania. Pełen zakres i kontrola.' },
+        { name:'Uginanie na modlitewniku', category:'Biceps', primary:'Biceps', alts:['Hantle', 'Wyciąg'], desc:'Stabilny łokieć, powolna ekscentryka.' },
+
+        { name:'Prostowanie na wyciągu', category:'Triceps', primary:'Triceps', alts:['Francuskie wyciskanie', 'Dipy'], desc:'Łokcie blisko tułowia, pełen wyprost.' },
+        { name:'Francuskie wyciskanie', category:'Triceps', primary:'Triceps', alts:['Wyciąg nad głową', 'Skullcrushers'], desc:'Kontrola łokci, nie rozjeżdżaj toru.' },
+
+        { name:'Plank', category:'Brzuch', primary:'Brzuch', alts:['Dead bug', 'Hollow hold'], desc:'Neutralny kręgosłup, napięcie pośladków i brzucha.' },
+        { name:'Unoszenie nóg w zwisie', category:'Brzuch', primary:'Brzuch', alts:['Unoszenia na poręczach', 'Reverse crunch'], desc:'Nie bujaj. Kontroluj miednicę.' },
+      ].map(x => ({ id: uid('ex'), source:'builtin', ...x }));
+
+      const DEFAULT_PLAN = {
+        id: uid('plan'),
+        name: 'Push/Pull/Legs (Starter)',
+        archived: false,
+        createdAt: Date.now(),
+        days: [
+          {
+            id: uid('day'),
+            name: 'Push',
+            exercises: [
+              { id: uid('px'), exerciseName: 'Wyciskanie sztangi leżąc', sets: 4, reps: 6, weight: 60, rpe: 8, tempo: '31X1', notes: '' },
+              { id: uid('px'), exerciseName: 'Wyciskanie żołnierskie', sets: 3, reps: 8, weight: 35, rpe: 8, tempo: '30X1', notes: '' },
+              { id: uid('px'), exerciseName: 'Prostowanie na wyciągu', sets: 3, reps: 12, weight: 25, rpe: 9, tempo: '2011', notes: '' },
+            ]
+          },
+          {
+            id: uid('day'),
+            name: 'Pull',
+            exercises: [
+              { id: uid('px'), exerciseName: 'Podciąganie', sets: 4, reps: 6, weight: 0, rpe: 9, tempo: '21X1', notes: 'Jeśli łatwe: dodaj ciężar.' },
+              { id: uid('px'), exerciseName: 'Wiosłowanie sztangą', sets: 4, reps: 8, weight: 50, rpe: 8, tempo: '21X1', notes: '' },
+              { id: uid('px'), exerciseName: 'Uginanie ramion ze sztangą', sets: 3, reps: 10, weight: 30, rpe: 9, tempo: '2011', notes: '' },
+            ]
+          },
+          {
+            id: uid('day'),
+            name: 'Legs',
+            exercises: [
+              { id: uid('px'), exerciseName: 'Przysiad tylni', sets: 4, reps: 6, weight: 80, rpe: 8, tempo: '31X1', notes: '' },
+              { id: uid('px'), exerciseName: 'RDL (martwy ciąg na prostych nogach)', sets: 3, reps: 8, weight: 70, rpe: 8, tempo: '31X1', notes: '' },
+              { id: uid('px'), exerciseName: 'Plank', sets: 3, reps: 45, weight: 0, rpe: 8, tempo: '—', notes: 'reps = sekundy' },
+            ]
+          },
+        ]
+      };
+
+      const DEFAULT_STATE = {
+        meta: { version: 1, createdAt: Date.now(), updatedAt: Date.now() },
+        settings: {
+          unit: 'kg',
+          defaultRestSec: 90,
+          restPresets: [60, 90, 120],
+        },
+        exercises: deepClone(BUILTIN_EXERCISES),
+        plans: [deepClone(DEFAULT_PLAN)],
+        history: [],
+        sessionActive: null,
+      };
+
+      function normalizeState(raw){
+        const s = raw && typeof raw === 'object' ? raw : {};
+        const out = deepClone(DEFAULT_STATE);
+
+        // merge shallow
+        out.meta = { ...out.meta, ...(s.meta||{}) };
+        out.settings = { ...out.settings, ...(s.settings||{}) };
+
+        // arrays
+        if (Array.isArray(s.exercises) && s.exercises.length) out.exercises = s.exercises;
+        if (Array.isArray(s.plans)) out.plans = s.plans;
+        if (Array.isArray(s.history)) out.history = s.history;
+        if (s.sessionActive && typeof s.sessionActive === 'object') out.sessionActive = s.sessionActive;
+
+        // ensure IDs
+        out.exercises = out.exercises.map(e => ({ id: e.id || uid('ex'), source: e.source || 'custom', ...e }));
+        out.plans = out.plans.map(p => ({
+          id: p.id || uid('plan'),
+          name: p.name || 'Plan',
+          archived: !!p.archived,
+          createdAt: p.createdAt || Date.now(),
+          days: Array.isArray(p.days) ? p.days.map(d => ({
+            id: d.id || uid('day'),
+            name: d.name || 'Dzień',
+            exercises: Array.isArray(d.exercises) ? d.exercises.map(x => ({ id: x.id || uid('px'), ...x })) : []
+          })) : []
+        }));
+        out.history = out.history.map(w => ({
+          id: w.id || uid('w'),
+          name: w.name || 'Trening',
+          startedAt: w.startedAt || Date.now(),
+          endedAt: w.endedAt || w.startedAt || Date.now(),
+          durationSec: w.durationSec || 0,
+          tonnage: w.tonnage || 0,
+          totalSets: w.totalSets || 0,
+          exercises: Array.isArray(w.exercises) ? w.exercises : [],
+        }));
+
+        out.meta.updatedAt = Date.now();
+        return out;
+      }
+
+      function loadState(){
+        try{
+          const raw = localStorage.getItem(STORAGE_KEY);
+          if (!raw) return deepClone(DEFAULT_STATE);
+          return normalizeState(JSON.parse(raw));
+        }catch(e){
+          console.warn('loadState error', e);
+          toast('Uszkodzone dane localStorage — reset do domyślnych.', 'danger', 6000);
+          return deepClone(DEFAULT_STATE);
+        }
+      }
+
+      let saveTimer = null;
+      function saveStateDebounced(){
+        clearTimeout(saveTimer);
+        saveTimer = setTimeout(() => {
+          try{
+            App.state.meta.updatedAt = Date.now();
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(App.state));
+            setStorageIndicator('OK', 'cyan');
+          }catch(e){
+            console.error('save error', e);
+            setStorageIndicator('FULL?', 'rose');
+            toast('Błąd zapisu do localStorage (możliwy brak miejsca).', 'danger', 6000);
+          }
+        }, 160);
+      }
+
+      function setStorageIndicator(text, tone='cyan'){
+        const el = document.getElementById('storageStatus');
+        el.textContent = text;
+        const host = document.getElementById('storageIndicator');
+        host.classList.remove('cyan','rose','emerald','purple');
+        host.classList.add('badge', tone === 'rose' ? 'rose' : tone === 'emerald' ? 'emerald' : tone === 'purple' ? 'purple' : 'cyan');
+      }
+
+      // ----------------------------
+      // App controller
+      // ----------------------------
+      const App = {
+        state: loadState(),
+        ui: {
+          route: 'session',
+          routeParams: {},
+          historyExpanded: new Set(),
+          planEditorId: null,
+          picker: { mode: null, planId: null, dayId: null, exerciseId: null },
+          rest: { running: false, endsAt: null, startedAt: null, durationSec: 0, fromSet: null },
+          tickHandle: null
+        },
+      };
+
+      // ----------------------------
+      // Domain logic
+      // ----------------------------
+      const SetType = {
+        work: 'Robocza',
+        warmup: 'Rozgrzewkowa',
+        dropset: 'Dropset',
+        failure: 'Do upadku',
+      };
+
+      function getExerciseByName(name){
+        return App.state.exercises.find(e => e.name === name) || null;
+      }
+      function getOrCreateExerciseByName(name){
+        let ex = getExerciseByName(name);
+        if (!ex){
+          ex = { id: uid('ex'), source:'custom', name, category:'Inne', primary:'Inne', alts:[], desc:'' };
+          App.state.exercises.push(ex);
+          saveStateDebounced();
+        }
+        return ex;
+      }
+
+      function sessionEnsure(){
+        if (App.state.sessionActive) return App.state.sessionActive;
+        const sess = {
+          id: uid('sess'),
+          name: 'Trening (pusty)',
+          startedAt: Date.now(),
+          fromPlanId: null,
+          fromDayId: null,
+          notes: '',
+          exercises: [],
+        };
+        App.state.sessionActive = sess;
+        saveStateDebounced();
+        return sess;
+      }
+
+      function sessionIsActive(){
+        return !!App.state.sessionActive;
+      }
+
+      function sessionAddExercise(exerciseId){
+        const sess = sessionEnsure();
+        const ex = App.state.exercises.find(e => e.id === exerciseId);
+        if (!ex) return;
+
+        const already = sess.exercises.some(x => x.exerciseId === ex.id);
+        const name = ex.name + (already ? ` (${sess.exercises.filter(x => x.exerciseId===ex.id).length+1})` : '');
+        const item = {
+          id: uid('sx'),
+          exerciseId: ex.id,
+          name,
+          category: ex.category,
+          notes: '',
+          tempo: '',
+          sets: [
+            { id: uid('set'), type:'work', weight: 0, reps: 0, rpe: 8, status:'pending', doneAt: null },
+          ]
+        };
+        sess.exercises.push(item);
+        saveStateDebounced();
+      }
+
+      function sessionRemoveExercise(sxId){
+        const sess = App.state.sessionActive;
+        if (!sess) return;
+        sess.exercises = sess.exercises.filter(x => x.id !== sxId);
+        saveStateDebounced();
+      }
+
+      function sessionAddSet(sxId){
+        const sess = App.state.sessionActive;
+        if (!sess) return;
+        const ex = sess.exercises.find(x => x.id === sxId);
+        if (!ex) return;
+        const last = ex.sets[ex.sets.length-1] || { type:'work', weight: 0, reps: 0, rpe: 8 };
+        ex.sets.push({ id: uid('set'), type: last.type || 'work', weight: safeNum(last.weight,0), reps: safeNum(last.reps,0), rpe: safeNum(last.rpe,8), status:'pending', doneAt: null });
+        saveStateDebounced();
+      }
+
+      function sessionDeleteSet(sxId, setId){
+        const sess = App.state.sessionActive;
+        if (!sess) return;
+        const ex = sess.exercises.find(x => x.id === sxId);
+        if (!ex) return;
+        ex.sets = ex.sets.filter(s => s.id !== setId);
+        if (ex.sets.length === 0){
+          ex.sets.push({ id: uid('set'), type:'work', weight: 0, reps: 0, rpe: 8, status:'pending', doneAt: null });
+        }
+        saveStateDebounced();
+      }
+
+      function sessionUpdateSetField(sxId, setId, field, value){
+        const sess = App.state.sessionActive;
+        if (!sess) return;
+        const ex = sess.exercises.find(x => x.id === sxId);
+        if (!ex) return;
+        const set = ex.sets.find(s => s.id === setId);
+        if (!set) return;
+
+        if (field === 'type'){
+          set.type = value;
+        } else if (field === 'weight'){
+          set.weight = clamp(round1(safeNum(value,0)), 0, 2000);
+        } else if (field === 'reps'){
+          set.reps = clamp(round0(safeNum(value,0)), 0, 999);
+        } else if (field === 'rpe'){
+          set.rpe = clamp(round1(safeNum(value, 8)), 0, 10);
+        }
+        saveStateDebounced();
+      }
+
+      function sessionUpdateExerciseField(sxId, field, value){
+        const sess = App.state.sessionActive;
+        if (!sess) return;
+        const ex = sess.exercises.find(x => x.id === sxId);
+        if (!ex) return;
+        if (field === 'notes') ex.notes = String(value || '');
+        if (field === 'tempo') ex.tempo = String(value || '');
+        saveStateDebounced();
+      }
+
+      function setStatusCycle(old){
+        if (old === 'pending') return 'done';
+        if (old === 'done') return 'skipped';
+        return 'pending';
+      }
+
+      function startRestTimer(sec, fromSet=null){
+        sec = clamp(Math.floor(safeNum(sec, App.state.settings.defaultRestSec)), 5, 3600);
+        App.ui.rest.running = true;
+        App.ui.rest.durationSec = sec;
+        App.ui.rest.startedAt = Date.now();
+        App.ui.rest.endsAt = Date.now() + sec * 1000;
+        App.ui.rest.fromSet = fromSet;
+        updateRestUI();
+      }
+
+      function skipRestTimer(){
+        App.ui.rest.running = false;
+        App.ui.rest.endsAt = null;
+        App.ui.rest.startedAt = null;
+        App.ui.rest.durationSec = 0;
+        App.ui.rest.fromSet = null;
+        updateRestUI();
+      }
+
+      function beep(){
+        try{
+          const Ctx = window.AudioContext || window.webkitAudioContext;
+          if (!Ctx) return;
+          const ctx = new Ctx();
+          const o = ctx.createOscillator();
+          const g = ctx.createGain();
+          o.type = 'sine';
+          o.frequency.value = 880;
+
+          g.gain.setValueAtTime(0.0001, ctx.currentTime);
+          g.gain.exponentialRampToValueAtTime(0.25, ctx.currentTime + 0.01);
+          g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.35);
+
+          o.connect(g); g.connect(ctx.destination);
+          o.start();
+          o.stop(ctx.currentTime + 0.4);
+
+          setTimeout(() => ctx.close().catch(()=>{}), 700);
+        }catch(e){}
+      }
+
+      function sessionToggleSetStatus(sxId, setId){
+        const sess = App.state.sessionActive;
+        if (!sess) return;
+        const ex = sess.exercises.find(x => x.id === sxId);
+        if (!ex) return;
+        const set = ex.sets.find(s => s.id === setId);
+        if (!set) return;
+
+        const next = setStatusCycle(set.status);
+        set.status = next;
+        set.doneAt = next === 'done' ? Date.now() : null;
+
+        // auto start rest on done
+        if (next === 'done'){
+          startRestTimer(App.state.settings.defaultRestSec, { sxId, setId });
+        }
+        saveStateDebounced();
+      }
+
+      function computeSessionStats(sess){
+        if (!sess) return { tonnage: 0, totalSets: 0, doneSets: 0, exercises: 0 };
+        let tonnage = 0, totalSets = 0, doneSets = 0;
+        for (const ex of sess.exercises){
+          for (const s of ex.sets){
+            totalSets++;
+            if (s.status === 'done'){
+              doneSets++;
+              tonnage += safeNum(s.weight,0) * safeNum(s.reps,0);
+            }
+          }
+        }
+        return { tonnage, totalSets, doneSets, exercises: sess.exercises.length };
+      }
+
+      function computeWorkoutFromSession(sess){
+        const startedAt = sess.startedAt || Date.now();
+        const endedAt = Date.now();
+        const durationSec = Math.max(0, Math.floor((endedAt - startedAt) / 1000));
+        const stats = computeSessionStats(sess);
+
+        const workout = {
+          id: uid('w'),
+          name: sess.name || 'Trening',
+          startedAt, endedAt, durationSec,
+          tonnage: round1(stats.tonnage),
+          totalSets: stats.totalSets,
+          exercises: deepClone(sess.exercises).map(ex => ({
+            ...ex,
+            sets: ex.sets.map(s => ({ ...s }))
+          }))
+        };
+        return workout;
+      }
+
+      function finishWorkout(){
+        const sess = App.state.sessionActive;
+        if (!sess){
+          toast('Brak aktywnej sesji.', 'warn', 3000);
+          return;
+        }
+        const stats = computeSessionStats(sess);
+        const hasAny = stats.doneSets > 0 || stats.totalSets > 0 || sess.exercises.length > 0;
+        if (!hasAny){
+          App.state.sessionActive = null;
+          skipRestTimer();
+          saveStateDebounced();
+          render();
+          toast('Sesja pusta — zamknięta bez zapisu.', 'warn', 4000);
+          return;
+        }
+
+        const w = computeWorkoutFromSession(sess);
+        App.state.history.unshift(w);
+        App.state.sessionActive = null;
+        skipRestTimer();
+        saveStateDebounced();
+        render();
+        toast(`Zapisano trening: ${w.name} • tonaż ${round0(w.tonnage)} kg`, 'success', 5000);
+      }
+
+      // ----------------------------
+      // Plans
+      // ----------------------------
+      function planCreate(name='Nowy plan'){
+        const plan = { id: uid('plan'), name, archived:false, createdAt: Date.now(), days: [{ id: uid('day'), name:'Dzień 1', exercises: [] }] };
+        App.state.plans.unshift(plan);
+        saveStateDebounced();
+        return plan;
+      }
+
+      function planDuplicate(planId){
+        const p = App.state.plans.find(x => x.id === planId);
+        if (!p) return;
+        const copy = deepClone(p);
+        copy.id = uid('plan');
+        copy.name = `${p.name} (kopia)`;
+        copy.createdAt = Date.now();
+        copy.archived = false;
+        copy.days.forEach(d => {
+          d.id = uid('day');
+          d.exercises.forEach(ex => ex.id = uid('px'));
+        });
+        App.state.plans.unshift(copy);
+        saveStateDebounced();
+        toast('Plan zduplikowany.', 'success', 3500);
+      }
+
+      function planToggleArchive(planId){
+        const p = App.state.plans.find(x => x.id === planId);
+        if (!p) return;
+        p.archived = !p.archived;
+        saveStateDebounced();
+        toast(p.archived ? 'Plan zarchiwizowany.' : 'Plan przywrócony.', 'success', 3500);
+        render();
+      }
+
+      function planMoveExercise(planId, dayId, exIndex, dir){
+        const p = App.state.plans.find(x => x.id === planId);
+        if (!p) return;
+        const d = p.days.find(x => x.id === dayId);
+        if (!d) return;
+        const i = exIndex;
+        const j = i + dir;
+        if (j < 0 || j >= d.exercises.length) return;
+        const tmp = d.exercises[i];
+        d.exercises[i] = d.exercises[j];
+        d.exercises[j] = tmp;
+        saveStateDebounced();
+        render();
+      }
+
+      function planAddDay(planId){
+        const p = App.state.plans.find(x => x.id === planId);
+        if (!p) return;
+        p.days.push({ id: uid('day'), name: `Dzień ${p.days.length+1}`, exercises: [] });
+        saveStateDebounced();
+        render();
+      }
+
+      function planRemoveDay(planId, dayId){
+        const p = App.state.plans.find(x => x.id === planId);
+        if (!p) return;
+        if (p.days.length <= 1){
+          toast('Plan musi mieć co najmniej 1 dzień.', 'warn', 3500);
+          return;
+        }
+        p.days = p.days.filter(d => d.id !== dayId);
+        saveStateDebounced();
+        render();
+      }
+
+      function planUpdateField(planId, field, value){
+        const p = App.state.plans.find(x => x.id === planId);
+        if (!p) return;
+        if (field === 'name') p.name = String(value || 'Plan');
+        saveStateDebounced();
+      }
+
+      function planUpdateDayField(planId, dayId, field, value){
+        const p = App.state.plans.find(x => x.id === planId);
+        if (!p) return;
+        const d = p.days.find(x => x.id === dayId);
+        if (!d) return;
+        if (field === 'name') d.name = String(value || 'Dzień');
+        saveStateDebounced();
+      }
+
+      function planAddExerciseByExerciseId(planId, dayId, exerciseId){
+        const p = App.state.plans.find(x => x.id === planId);
+        if (!p) return;
+        const d = p.days.find(x => x.id === dayId);
+        if (!d) return;
+        const ex = App.state.exercises.find(e => e.id === exerciseId);
+        if (!ex) return;
+        d.exercises.push({
+          id: uid('px'),
+          exerciseName: ex.name,
+          sets: 3,
+          reps: 8,
+          weight: 0,
+          rpe: 8,
+          tempo: '31X1',
+          notes: ''
+        });
+        saveStateDebounced();
+      }
+
+      function planRemoveExercise(planId, dayId, pxId){
+        const p = App.state.plans.find(x => x.id === planId);
+        if (!p) return;
+        const d = p.days.find(x => x.id === dayId);
+        if (!d) return;
+        d.exercises = d.exercises.filter(x => x.id !== pxId);
+        saveStateDebounced();
+        render();
+      }
+
+      function planUpdateExerciseField(planId, dayId, pxId, field, value){
+        const p = App.state.plans.find(x => x.id === planId);
+        if (!p) return;
+        const d = p.days.find(x => x.id === dayId);
+        if (!d) return;
+        const x = d.exercises.find(e => e.id === pxId);
+        if (!x) return;
+
+        if (field === 'exerciseName') x.exerciseName = String(value || '');
+        if (field === 'sets') x.sets = clamp(round0(safeNum(value, 3)), 1, 20);
+        if (field === 'reps') x.reps = clamp(round0(safeNum(value, 8)), 1, 200);
+        if (field === 'weight') x.weight = clamp(round1(safeNum(value, 0)), 0, 2000);
+        if (field === 'rpe') x.rpe = clamp(round1(safeNum(value, 8)), 0, 10);
+        if (field === 'tempo') x.tempo = String(value || '');
+        if (field === 'notes') x.notes = String(value || '');
+        saveStateDebounced();
+      }
+
+      function startSessionFromPlan(planId, dayId){
+        const p = App.state.plans.find(x => x.id === planId);
+        if (!p) return;
+        const d = p.days.find(x => x.id === dayId);
+        if (!d) return;
+
+        const sess = {
+          id: uid('sess'),
+          name: `${p.name} • ${d.name}`,
+          startedAt: Date.now(),
+          fromPlanId: p.id,
+          fromDayId: d.id,
+          notes: '',
+          exercises: d.exercises.map(px => {
+            const ex = getOrCreateExerciseByName(px.exerciseName);
+            const sets = [];
+            for (let i=0;i<px.sets;i++){
+              sets.push({
+                id: uid('set'),
+                type: 'work',
+                weight: clamp(round1(safeNum(px.weight,0)), 0, 2000),
+                reps: clamp(round0(safeNum(px.reps,0)), 0, 999),
+                rpe: clamp(round1(safeNum(px.rpe,8)), 0, 10),
+                status: 'pending',
+                doneAt: null
+              });
+            }
+            return {
+              id: uid('sx'),
+              exerciseId: ex.id,
+              name: ex.name,
+              category: ex.category,
+              notes: px.notes || '',
+              tempo: px.tempo || '',
+              sets
+            };
+          })
+        };
+
+        App.state.sessionActive = sess;
+        saveStateDebounced();
+        App.ui.route = 'session';
+        render();
+        toast('Rozpoczęto trening z planu.', 'success', 3500);
+      }
+
+      // ----------------------------
+      // Progress / PR
+      // ----------------------------
+      function getDoneSetsFromWorkout(w){
+        const out = [];
+        for (const ex of (w.exercises||[])){
+          for (const s of (ex.sets||[])){
+            if (s.status === 'done'){
+              out.push({
+                exerciseName: ex.name,
+                category: ex.category || '—',
+                weight: safeNum(s.weight,0),
+                reps: safeNum(s.reps,0),
+                rpe: safeNum(s.rpe,0),
+                volume: safeNum(s.weight,0) * safeNum(s.reps,0),
+                ts: s.doneAt || w.endedAt || w.startedAt
+              });
+            }
+          }
+        }
+        return out;
+      }
+
+      function epley1RM(weight, reps){
+        weight = safeNum(weight,0);
+        reps = safeNum(reps,0);
+        if (weight <= 0 || reps <= 0) return 0;
+        return weight * (1 + reps/30);
+      }
+
+      function computePRs(){
+        // per exerciseName: maxWeight, maxRepsAtAnyWeight, maxSetVolume, maxEst1RM
+        const map = new Map();
+        for (const w of App.state.history){
+          for (const s of getDoneSetsFromWorkout(w)){
+            const key = s.exerciseName;
+            if (!map.has(key)){
+              map.set(key, { exerciseName: key, category: s.category, maxWeight:0, maxReps:0, maxSetVolume:0, maxEst1RM:0 });
+            }
+            const r = map.get(key);
+            r.category = r.category || s.category;
+            r.maxWeight = Math.max(r.maxWeight, s.weight);
+            r.maxReps = Math.max(r.maxReps, s.reps);
+            r.maxSetVolume = Math.max(r.maxSetVolume, s.volume);
+            r.maxEst1RM = Math.max(r.maxEst1RM, epley1RM(s.weight, s.reps));
+          }
+        }
+        return Array.from(map.values()).sort((a,b) => b.maxEst1RM - a.maxEst1RM);
+      }
+
+      function computeAchievements(){
+        const allDoneSets = App.state.history.flatMap(getDoneSetsFromWorkout);
+        const any100 = allDoneSets.some(s => s.weight >= 100);
+        const lifetimeTonnage = App.state.history.reduce((acc,w) => acc + safeNum(w.tonnage,0), 0);
+
+        // 10 trainings in a row (no gap > 2 days between consecutive workouts, last 10)
+        const dates = App.state.history
+          .map(w => startOfDay(new Date(w.endedAt || w.startedAt)).getTime())
+          .sort((a,b) => b-a);
+
+        let streak10 = false;
+        if (dates.length >= 10){
+          const last10 = dates.slice(0,10);
+          let ok = true;
+          for (let i=0;i<last10.length-1;i++){
+            const diffDays = (last10[i] - last10[i+1]) / 86400000;
+            if (diffDays > 2.01){ ok = false; break; }
+          }
+          streak10 = ok;
+        }
+
+        // weekly 10k tonnage
+        const weekTotals = new Map();
+        for (const w of App.state.history){
+          const k = weekKey(w.endedAt || w.startedAt);
+          weekTotals.set(k, (weekTotals.get(k)||0) + safeNum(w.tonnage,0));
+        }
+        const any10kWeek = Array.from(weekTotals.values()).some(v => v >= 10000);
+
+        return [
+          { id:'club100', name:'Klub 100kg', desc:'Wykonaj serię z ciężarem ≥ 100 kg (dowolne ćwiczenie).', unlocked: any100, tone: any100 ? 'emerald':'rose', icon: 'badge-check' },
+          { id:'streak10', name:'10 treningów z rzędu', desc:'Wykonaj 10 treningów bez długich przerw (≤2 dni między treningami).', unlocked: streak10, tone: streak10 ? 'emerald':'rose', icon: 'flame' },
+          { id:'tonnage50k', name:'Kowadło 50k', desc:'Nabij łącznie 50 000 kg tonażu w historii.', unlocked: lifetimeTonnage >= 50000, tone: lifetimeTonnage >= 50000 ? 'emerald':'rose', icon: 'anvil' },
+          { id:'week10k', name:'Tydzień 10k', desc:'Zrób ≥ 10 000 kg tonażu w jednym tygodniu.', unlocked: any10kWeek, tone: any10kWeek ? 'emerald':'rose', icon: 'calendar-check' },
+        ];
+      }
+
+      function computeThisWeekSummary(){
+        const now = Date.now();
+        const start = startOfWeekMon(now).getTime();
+        const end = start + 7*86400000;
+
+        const ws = App.state.history.filter(w => {
+          const t = w.endedAt || w.startedAt;
+          return t >= start && t < end;
+        });
+
+        const workouts = ws.length;
+        const timeSec = ws.reduce((acc,w) => acc + safeNum(w.durationSec,0), 0);
+        const tonnage = ws.reduce((acc,w) => acc + safeNum(w.tonnage,0), 0);
+        const sets = ws.reduce((acc,w) => acc + safeNum(w.totalSets,0), 0);
+        return { workouts, timeSec, tonnage, sets };
+      }
+
+      function computeWeeklyVolumeSeries(weeksBack=8){
+        const now = Date.now();
+        const cur = startOfWeekMon(now).getTime();
+        const buckets = [];
+        for (let i=weeksBack-1;i>=0;i--){
+          const weekStart = cur - i*7*86400000;
+          const weekEnd = weekStart + 7*86400000;
+          const tonnage = App.state.history
+            .filter(w => {
+              const t = w.endedAt || w.startedAt;
+              return t >= weekStart && t < weekEnd;
+            })
+            .reduce((acc,w) => acc + safeNum(w.tonnage,0), 0);
+          buckets.push({ weekStart, label: fmtDate(weekStart).slice(5), tonnage });
+        }
+        return buckets;
+      }
+
+      function computeMuscleDistributionThisWeek(){
+        const now = Date.now();
+        const start = startOfWeekMon(now).getTime();
+        const end = start + 7*86400000;
+
+        const groups = ['Klatka','Plecy','Nogi','Barki','Ramiona'];
+        const mapToGroup = (cat) => {
+          if (cat === 'Biceps' || cat === 'Triceps') return 'Ramiona';
+          if (groups.includes(cat)) return cat;
+          if (cat === 'Brzuch') return 'Ramiona'; // compact view
+          return 'Ramiona';
+        };
+
+        const sums = new Map(groups.map(g => [g, 0]));
+        for (const w of App.state.history){
+          const t = w.endedAt || w.startedAt;
+          if (t < start || t >= end) continue;
+          for (const ex of (w.exercises||[])){
+            const g = mapToGroup(ex.category || 'Ramiona');
+            for (const s of (ex.sets||[])){
+              if (s.status !== 'done') continue;
+              const vol = safeNum(s.weight,0) * safeNum(s.reps,0);
+              sums.set(g, (sums.get(g)||0) + vol);
+            }
+          }
+        }
+
+        const total = Array.from(sums.values()).reduce((a,b)=>a+b,0) || 1;
+        return groups.map(g => ({ group: g, value: sums.get(g)||0, pct: (sums.get(g)||0) / total }));
+      }
+
+      // ----------------------------
+      // Export / Import
+      // ----------------------------
+      function exportJSON(){
+        const data = deepClone(App.state);
+        data.meta = data.meta || {};
+        data.meta.exportedAt = Date.now();
+        const blob = new Blob([JSON.stringify(data, null, 2)], { type:'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `ironforgepro-backup_${fmtDate(Date.now())}.json`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+        toast('Wyeksportowano JSON.', 'success', 3000);
+      }
+
+      async function importJSON(file){
+        const text = await file.text();
+        let obj;
+        try{
+          obj = JSON.parse(text);
+        }catch(e){
+          toast('Nieprawidłowy JSON.', 'danger', 5000);
+          return;
+        }
+        // minimal validation
+        if (!obj || typeof obj !== 'object' || !Array.isArray(obj.exercises) || !Array.isArray(obj.plans) || !Array.isArray(obj.history)){
+          toast('To nie wygląda na backup IronForge PRO.', 'danger', 6000);
+          return;
+        }
+        App.state = normalizeState(obj);
+        try{
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(App.state));
+          toast('Import zakończony. Dane zostały nadpisane.', 'success', 5000);
+          App.ui.route = 'session';
+          App.ui.planEditorId = null;
+          App.ui.historyExpanded = new Set();
+          skipRestTimer();
+          render();
+        }catch(e){
+          toast('Nie udało się zapisać importu do localStorage.', 'danger', 6000);
+        }
+      }
+
+      // ----------------------------
+      // Rendering (SPA)
+      // ----------------------------
+      const routes = [
+        { id:'session', label:'TRENINGI', icon:'dumbbell', desc:'Aktywna sesja — serie, RPE, status + autozapis' },
+        { id:'plans', label:'PLANY', icon:'layers', desc:'Kreator planów, dni, ćwiczeń, duplikowanie i archiwum' },
+        { id:'progress', label:'PROGRES', icon:'bar-chart-3', desc:'Dashboard: tydzień, objętość, rozkład na partie' },
+        { id:'prs', label:'REKORDY / PR', icon:'trophy', desc:'PR per ćwiczenie + osiągnięcia' },
+        { id:'history', label:'HISTORIA', icon:'calendar', desc:'Lista i wgląd w minione treningi' },
+        { id:'calculators', label:'KALKULATORY', icon:'calculator', desc:'1RM, talerze, BMR/TDEE' },
+        { id:'atlas', label:'ATLAS', icon:'book-open', desc:'Baza ćwiczeń + dodawanie własnych' },
+        { id:'backup', label:'SYNCHRO & KOPIA', icon:'hard-drive', desc:'Eksport/Import JSON (przenoszenie danych)' },
+      ];
+
+      function setRoute(route){
+        App.ui.route = route;
+        App.ui.planEditorId = null;
+        render();
+      }
+
+      function renderNav(){
+        const nav = document.getElementById('nav');
+        nav.innerHTML = routes.map(r => `
+          <button class="btn navbtn ${App.ui.route===r.id?'active':''}" data-action="nav" data-route="${r.id}">
+            <span class="row" style="gap:10px;">
+              <i data-lucide="${r.icon}" style="width:16px;height:16px;"></i>
+              <span style="font-weight:700; letter-spacing:.02em;">${r.label}</span>
+            </span>
+            <i data-lucide="chevron-right" style="width:16px;height:16px; opacity:.7;"></i>
+          </button>
+        `).join('');
+        refreshIcons();
+      }
+
+      function renderHeader(){
+        const r = routes.find(x => x.id === App.ui.route) || routes[0];
+        document.getElementById('routeTitle').textContent = r.label;
+        document.getElementById('routeSubtitle').textContent = r.desc;
+
+        document.getElementById('nowBadge').textContent = fmtDateTime(Date.now());
+        document.getElementById('dataVersion').textContent = 'v' + (App.state.meta?.version || 1);
+
+        // active session mini
+        const mini = document.getElementById('activeSessionMini');
+        if (App.state.sessionActive){
+          const stats = computeSessionStats(App.state.sessionActive);
+          mini.innerHTML = `<span style="color:#67e8f9;">${escapeHtml(App.state.sessionActive.name || 'Trening')}</span> • <span class="muted">tonaż</span> <span class="mono">${round0(stats.tonnage)}</span> <span class="muted">kg</span>`;
+        } else {
+          mini.textContent = 'brak';
+        }
+      }
+
+      function render(){
+        renderNav();
+        renderHeader();
+        renderView();
+        updateRestUI();
+        updateWorkoutStopwatchUI();
+        refreshIcons();
+      }
+
+      function renderView(){
+        const host = document.getElementById('view');
+        const route = App.ui.route;
+
+        if (route === 'session') host.innerHTML = renderSessionView();
+        else if (route === 'plans') host.innerHTML = renderPlansView();
+        else if (route === 'progress') host.innerHTML = renderProgressView();
+        else if (route === 'prs') host.innerHTML = renderPRsView();
+        else if (route === 'history') host.innerHTML = renderHistoryView();
+        else if (route === 'calculators') host.innerHTML = renderCalculatorsView();
+        else if (route === 'atlas') host.innerHTML = renderAtlasView();
+        else if (route === 'backup') host.innerHTML = renderBackupView();
+        else host.innerHTML = `<div class="panel" style="padding:14px;">Nieznany widok.</div>`;
+
+        // post-render dynamic bits
+        if (route === 'progress') renderProgressCharts();
+        if (route === 'session') updateSessionComputedUI();
+        refreshIcons();
+      }
+
+      // ----------------------------
+      // Session view
+      // ----------------------------
+      function renderSessionView(){
+        const sess = App.state.sessionActive;
+
+        if (!sess){
+          const plans = App.state.plans.filter(p => !p.archived);
+          return `
+            <div class="panel glow-cyan" style="padding:14px;">
+              <div class="row" style="justify-content: space-between;">
+                <div class="stack" style="gap:4px;">
+                  <div class="badge cyan"><i data-lucide="dumbbell" style="width:14px;height:14px;"></i><span>Aktywna sesja</span></div>
+                  <div class="muted small">Nie ma aktywnego treningu. Stwórz nowy lub uruchom z planu.</div>
+                </div>
+                <div class="row">
+                  <button class="btn primary" data-action="session-start-empty">
+                    <i data-lucide="plus" style="width:16px;height:16px;"></i>
+                    Nowy (pusty)
+                  </button>
+                </div>
+              </div>
+
+              <div class="hr"></div>
+
+              <div class="grid2">
+                <div class="panel soft" style="padding:12px;">
+                  <div class="row" style="justify-content: space-between;">
+                    <div class="stack" style="gap:4px;">
+                      <div style="font-weight:800;">Start z planu</div>
+                      <div class="small muted">Wybierz plan i dzień — utworzymy serie na podstawie założeń.</div>
+                    </div>
+                    <div class="badge purple"><i data-lucide="layers" style="width:14px;height:14px;"></i><span>Plany</span></div>
+                  </div>
+                  <div class="hr"></div>
+
+                  ${plans.length ? `
+                    <div class="stack">
+                      <label class="small muted">Plan</label>
+                      <select class="select" id="startPlanSelect">
+                        ${plans.map(p => `<option value="${p.id}">${escapeHtml(p.name)}</option>`).join('')}
+                      </select>
+                      <label class="small muted">Dzień</label>
+                      <select class="select" id="startDaySelect"></select>
+                      <div class="row" style="justify-content:flex-end;">
+                        <button class="btn primary" data-action="session-start-from-plan">
+                          <i data-lucide="rocket" style="width:16px;height:16px;"></i>
+                          Start
+                        </button>
+                      </div>
+                    </div>
+                  ` : `
+                    <div class="small muted">Brak aktywnych planów. Przejdź do PLANY i utwórz pierwszy.</div>
+                  `}
+                </div>
+
+                <div class="panel soft" style="padding:12px;">
+                  <div class="row" style="justify-content: space-between;">
+                    <div class="stack" style="gap:4px;">
+                      <div style="font-weight:800;">Tip: szybki workflow</div>
+                      <div class="small muted">Kliknij <span class="badge cyan">Zrobione</span> przy serii — timer odpoczynku startuje automatycznie.</div>
+                    </div>
+                    <div class="badge emerald"><i data-lucide="zap" style="width:14px;height:14px;"></i><span>Autozapis</span></div>
+                  </div>
+                  <div class="hr"></div>
+                  <ul class="small muted" style="margin:0; padding-left: 18px; line-height: 1.7;">
+                    <li>Dodawaj/usuń serie i ćwiczenia w locie.</li>
+                    <li>Uzupełniaj notatki i tempo (np. <span class="mono">31X1</span>).</li>
+                    <li>Status: <span class="mono">pending → done → skipped</span>.</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          `;
+        }
+
+        const stats = computeSessionStats(sess);
+        return `
+          <div class="stack">
+            <div class="panel glow-purple" style="padding:14px;">
+              <div class="row" style="justify-content: space-between; align-items:flex-start;">
+                <div class="stack" style="gap:8px; flex:1; min-width: 260px;">
+                  <div class="row" style="justify-content: space-between;">
+                    <div class="badge purple"><i data-lucide="activity" style="width:14px;height:14px;"></i><span>Sesja aktywna</span></div>
+                    <div class="badge cyan mono">start: ${fmtDateTime(sess.startedAt)}</div>
+                  </div>
+
+                  <div class="grid2">
+                    <div class="stack">
+                      <label class="small muted">Nazwa treningu</label>
+                      <input class="input" value="${escapeHtml(sess.name||'')}" data-action="session-name" placeholder="np. Push • siła" />
+                    </div>
+                    <div class="stack">
+                      <label class="small muted">Notatki globalne</label>
+                      <input class="input" value="${escapeHtml(sess.notes||'')}" data-action="session-notes" placeholder="np. sen, samopoczucie, ból..." />
+                    </div>
+                  </div>
+
+                  <div class="row">
+                    <span class="badge cyan"><i data-lucide="sigma" style="width:14px;height:14px;"></i><span>Tonaż:</span> <span class="mono" id="sessionTonnage">${round0(stats.tonnage)}</span> kg</span>
+                    <span class="badge"><i data-lucide="list" style="width:14px;height:14px;"></i><span>Serie:</span> <span class="mono" id="sessionSets">${stats.totalSets}</span></span>
+                    <span class="badge"><i data-lucide="check" style="width:14px;height:14px;"></i><span>Zrobione:</span> <span class="mono" id="sessionDoneSets">${stats.doneSets}</span></span>
+                    <span class="badge"><i data-lucide="rows-3" style="width:14px;height:14px;"></i><span>Ćwiczenia:</span> <span class="mono" id="sessionExercises">${stats.exercises}</span></span>
+                  </div>
+                </div>
+
+                <div class="stack" style="gap:10px; min-width: 260px;">
+                  <div class="row" style="justify-content:flex-end;">
+                    <button class="btn" data-action="session-add-exercise">
+                      <i data-lucide="plus" style="width:16px;height:16px;"></i>
+                      Dodaj ćwiczenie
+                    </button>
+                    <button class="btn danger" data-action="session-discard">
+                      <i data-lucide="trash-2" style="width:16px;height:16px;"></i>
+                      Porzuć
+                    </button>
+                  </div>
+
+                  <div class="panel soft" style="padding:12px;">
+                    <div class="small muted">Domyślny odpoczynek</div>
+                    <div class="row" style="justify-content: space-between; margin-top:6px;">
+                      <div class="badge cyan mono">${App.state.settings.defaultRestSec}s</div>
+                      <button class="btn" data-action="rest-custom">
+                        <i data-lucide="settings" style="width:16px;height:16px;"></i>
+                        Zmień
+                      </button>
+                    </div>
+                    <div class="hr"></div>
+                    <div class="small muted">Tip: RPE/RIR</div>
+                    <div class="small muted">Wpisuj np. <span class="mono">8</span> (RPE) lub użyj 0–10. Trzymamy jedną liczbę (praktycznie i offline).</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            ${sess.exercises.length ? sess.exercises.map(ex => renderSessionExerciseCard(ex)).join('') : `
+              <div class="panel" style="padding:14px;">
+                <div class="row" style="justify-content: space-between;">
+                  <div class="stack" style="gap:4px;">
+                    <div style="font-weight:800;">Brak ćwiczeń w sesji</div>
+                    <div class="muted small">Dodaj pierwsze ćwiczenie i zacznij logować serie.</div>
+                  </div>
+                  <button class="btn primary" data-action="session-add-exercise">
+                    <i data-lucide="plus" style="width:16px;height:16px;"></i>
+                    Dodaj ćwiczenie
+                  </button>
+                </div>
+              </div>
+            `}
+          </div>
+        `;
+      }
+
+      function renderSessionExerciseCard(ex){
+        return `
+          <div class="panel" style="padding:14px;">
+            <div class="row" style="justify-content: space-between; align-items:flex-start;">
+              <div class="stack" style="gap:6px; flex:1;">
+                <div class="row" style="justify-content: space-between;">
+                  <div class="row" style="gap:10px;">
+                    <div class="badge cyan"><i data-lucide="focus" style="width:14px;height:14px;"></i><span>${escapeHtml(ex.name)}</span></div>
+                    <div class="badge">${escapeHtml(ex.category || '—')}</div>
+                  </div>
+                  <div class="row">
+                    <button class="btn" data-action="set-add" data-sxid="${ex.id}">
+                      <i data-lucide="plus" style="width:16px;height:16px;"></i>
+                      Seria
+                    </button>
+                    <button class="btn danger" data-action="exercise-remove" data-sxid="${ex.id}">
+                      <i data-lucide="trash-2" style="width:16px;height:16px;"></i>
+                      Usuń ćw.
+                    </button>
+                  </div>
+                </div>
+
+                <div class="grid2">
+                  <div class="stack">
+                    <label class="small muted">Tempo (opcjonalnie)</label>
+                    <input class="input mono" value="${escapeHtml(ex.tempo||'')}" placeholder="np. 31X1" data-action="exercise-field" data-field="tempo" data-sxid="${ex.id}" />
+                  </div>
+                  <div class="stack">
+                    <label class="small muted">Notatki do ćwiczenia</label>
+                    <input class="input" value="${escapeHtml(ex.notes||'')}" placeholder="np. chwyt, ustawienie ławki..." data-action="exercise-field" data-field="notes" data-sxid="${ex.id}" />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="hr"></div>
+
+            <div class="hscroll">
+              <table>
+                <thead>
+                  <tr>
+                    <th style="min-width:180px;">Typ</th>
+                    <th style="min-width:120px;">Ciężar (kg)</th>
+                    <th style="min-width:120px;">Powt.</th>
+                    <th style="min-width:140px;">RPE/RIR</th>
+                    <th style="min-width:140px;">Objętość</th>
+                    <th style="min-width:160px;">Status</th>
+                    <th style="min-width:80px; text-align:right;">Usuń</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${ex.sets.map((s, idx) => renderSetRow(ex.id, s, idx)).join('')}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        `;
+      }
+
+      function statusBadge(status){
+        if (status === 'done') return `<span class="badge emerald"><i data-lucide="check-circle" style="width:14px;height:14px;"></i> Zrobione</span>`;
+        if (status === 'skipped') return `<span class="badge rose"><i data-lucide="x-circle" style="width:14px;height:14px;"></i> Ominięte</span>`;
+        return `<span class="badge"><i data-lucide="circle" style="width:14px;height:14px;"></i> Pending</span>`;
+      }
+
+      function renderSetRow(sxId, s, idx){
+        const vol = (safeNum(s.weight,0) * safeNum(s.reps,0));
+        return `
+          <tr>
+            <td>
+              <select class="select" style="padding:8px 10px;" data-action="set-field" data-field="type" data-sxid="${sxId}" data-setid="${s.id}">
+                <option value="work" ${s.type==='work'?'selected':''}>Robocza</option>
+                <option value="warmup" ${s.type==='warmup'?'selected':''}>Rozgrzewkowa</option>
+                <option value="dropset" ${s.type==='dropset'?'selected':''}>Dropset</option>
+                <option value="failure" ${s.type==='failure'?'selected':''}>Do upadku</option>
+              </select>
+            </td>
+            <td>
+              <input class="input mono" style="padding:8px 10px;" type="number" min="0" step="0.5"
+                value="${escapeHtml(s.weight ?? 0)}"
+                data-action="set-field" data-field="weight" data-sxid="${sxId}" data-setid="${s.id}" />
+            </td>
+            <td>
+              <input class="input mono" style="padding:8px 10px;" type="number" min="0" step="1"
+                value="${escapeHtml(s.reps ?? 0)}"
+                data-action="set-field" data-field="reps" data-sxid="${sxId}" data-setid="${s.id}" />
+            </td>
+            <td>
+              <input class="input mono" style="padding:8px 10px;" type="number" min="0" max="10" step="0.5"
+                value="${escapeHtml(s.rpe ?? 8)}"
+                data-action="set-field" data-field="rpe" data-sxid="${sxId}" data-setid="${s.id}" />
+            </td>
+            <td>
+              <span class="mono" data-role="set-tonnage" data-sxid="${sxId}" data-setid="${s.id}">${round0(vol)}</span>
+              <span class="muted small">kg</span>
+            </td>
+            <td>
+              <div class="row" style="justify-content: space-between;">
+                <button class="btn ${s.status==='done'?'good':s.status==='skipped'?'danger':''}"
+                  data-action="set-status" data-sxid="${sxId}" data-setid="${s.id}">
+                  ${statusBadge(s.status)}
+                </button>
+                <button class="btn" data-action="rest-preset" data-sec="${App.state.settings.defaultRestSec}" title="Start domyślnego odpoczynku">
+                  <i data-lucide="play" style="width:16px;height:16px;"></i>
+                </button>
+              </div>
+            </td>
+            <td style="text-align:right;">
+              <button class="btn danger" data-action="set-delete" data-sxid="${sxId}" data-setid="${s.id}" title="Usuń serię">
+                <i data-lucide="trash" style="width:16px;height:16px;"></i>
+              </button>
+            </td>
+          </tr>
+        `;
+      }
+
+      function updateSessionComputedUI(){
+        const sess = App.state.sessionActive;
+        if (!sess) return;
+
+        const stats = computeSessionStats(sess);
+
+        const elT = document.getElementById('sessionTonnage');
+        const elS = document.getElementById('sessionSets');
+        const elD = document.getElementById('sessionDoneSets');
+        const elE = document.getElementById('sessionExercises');
+
+        if (elT) elT.textContent = String(round0(stats.tonnage));
+        if (elS) elS.textContent = String(stats.totalSets);
+        if (elD) elD.textContent = String(stats.doneSets);
+        if (elE) elE.textContent = String(stats.exercises);
+      }
+
+      function updateSetRowComputed(sxId, setId){
+        const sess = App.state.sessionActive;
+        if (!sess) return;
+        const ex = sess.exercises.find(x => x.id === sxId);
+        if (!ex) return;
+        const s = ex.sets.find(x => x.id === setId);
+        if (!s) return;
+        const vol = safeNum(s.weight,0) * safeNum(s.reps,0);
+        const el = document.querySelector(`[data-role="set-tonnage"][data-sxid="${CSS.escape(sxId)}"][data-setid="${CSS.escape(setId)}"]`);
+        if (el) el.textContent = String(round0(vol));
+        updateSessionComputedUI();
+      }
+
+      // ----------------------------
+      // Plans view
+      // ----------------------------
+      function renderPlansView(){
+        const editorId = App.ui.planEditorId;
+        if (editorId){
+          const p = App.state.plans.find(x => x.id === editorId);
+          if (!p){
+            App.ui.planEditorId = null;
+            return renderPlansView();
+          }
+          return renderPlanEditor(p);
+        }
+
+        const active = App.state.plans.filter(p => !p.archived);
+        const archived = App.state.plans.filter(p => p.archived);
+
+        return `
+          <div class="stack">
+            <div class="panel glow-cyan" style="padding:14px;">
+              <div class="row" style="justify-content: space-between;">
+                <div class="stack" style="gap:4px;">
+                  <div class="badge cyan"><i data-lucide="layers" style="width:14px;height:14px;"></i><span>Plany treningowe</span></div>
+                  <div class="small muted">Kreator: dni, ćwiczenia, serie, powtórzenia, ciężar, RPE, tempo. Duplikuj, archiwizuj, zmieniaj kolejność.</div>
+                </div>
+                <div class="row">
+                  <button class="btn primary" data-action="plan-create">
+                    <i data-lucide="plus" style="width:16px;height:16px;"></i>
+                    Nowy plan
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div class="grid2">
+              <div class="panel" style="padding:14px;">
+                <div class="row" style="justify-content: space-between;">
+                  <div class="badge emerald"><i data-lucide="check" style="width:14px;height:14px;"></i><span>Aktywne (${active.length})</span></div>
+                </div>
+                <div class="hr"></div>
+
+                ${active.length ? active.map(p => renderPlanCard(p, false)).join('') : `
+                  <div class="small muted">Brak aktywnych planów. Utwórz pierwszy.</div>
+                `}
+              </div>
+
+              <div class="panel" style="padding:14px;">
+                <div class="row" style="justify-content: space-between;">
+                  <div class="badge rose"><i data-lucide="archive" style="width:14px;height:14px;"></i><span>Archiwum (${archived.length})</span></div>
+                </div>
+                <div class="hr"></div>
+
+                ${archived.length ? archived.map(p => renderPlanCard(p, true)).join('') : `
+                  <div class="small muted">Archiwum jest puste.</div>
+                `}
+              </div>
+            </div>
+          </div>
+        `;
+      }
+
+      function renderPlanCard(p, isArchived){
+        const days = p.days || [];
+        return `
+          <div class="panel soft" style="padding:12px; margin-bottom: 10px;">
+            <div class="row" style="justify-content: space-between; align-items:flex-start;">
+              <div class="stack" style="gap:4px; min-width: 0;">
+                <div class="row" style="gap:8px; flex-wrap:wrap;">
+                  <div style="font-weight:800; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width: 320px;">
+                    ${escapeHtml(p.name)}
+                  </div>
+                  ${isArchived ? `<span class="badge rose">ARCH</span>` : `<span class="badge emerald">LIVE</span>`}
+                  <span class="badge mono">${days.length} dni</span>
+                </div>
+                <div class="small muted">Utworzono: ${fmtDate(p.createdAt || Date.now())}</div>
+              </div>
+
+              <div class="row">
+                <button class="btn" data-action="plan-edit" data-planid="${p.id}">
+                  <i data-lucide="pencil" style="width:16px;height:16px;"></i>
+                  Edytuj
+                </button>
+                <button class="btn" data-action="plan-duplicate" data-planid="${p.id}">
+                  <i data-lucide="copy" style="width:16px;height:16px;"></i>
+                  Duplikuj
+                </button>
+                <button class="btn ${isArchived?'good':'danger'}" data-action="plan-archive" data-planid="${p.id}">
+                  <i data-lucide="${isArchived?'rotate-ccw':'archive'}" style="width:16px;height:16px;"></i>
+                  ${isArchived?'Przywróć':'Archiwizuj'}
+                </button>
+              </div>
+            </div>
+
+            <div class="hr"></div>
+
+            <div class="row" style="justify-content: space-between;">
+              <div class="small muted">Start sesji z planu:</div>
+              <div class="row" style="gap:8px; flex-wrap:wrap;">
+                ${(days || []).map(d => `
+                  <button class="btn primary" data-action="start-from-plan" data-planid="${p.id}" data-dayid="${d.id}">
+                    <i data-lucide="rocket" style="width:16px;height:16px;"></i>
+                    ${escapeHtml(d.name)}
+                  </button>
+                `).join('')}
+              </div>
+            </div>
+          </div>
+        `;
+      }
+
+      function renderPlanEditor(p){
+        return `
+          <div class="stack">
+            <div class="panel glow-purple" style="padding:14px;">
+              <div class="row" style="justify-content: space-between; align-items:flex-start;">
+                <div class="stack" style="gap:6px; flex:1;">
+                  <div class="row" style="gap:10px;">
+                    <div class="badge purple"><i data-lucide="pencil" style="width:14px;height:14px;"></i><span>Edytor planu</span></div>
+                    <div class="badge cyan mono">${escapeHtml(p.id)}</div>
+                    ${p.archived ? `<div class="badge rose">ARCH</div>` : `<div class="badge emerald">LIVE</div>`}
+                  </div>
+                  <div class="grid2">
+                    <div class="stack">
+                      <label class="small muted">Nazwa planu</label>
+                      <input class="input" value="${escapeHtml(p.name||'')}" data-action="plan-field" data-planid="${p.id}" data-field="name" />
+                    </div>
+                    <div class="stack">
+                      <label class="small muted">Akcje</label>
+                      <div class="row" style="justify-content:flex-start;">
+                        <button class="btn" data-action="plan-add-day" data-planid="${p.id}">
+                          <i data-lucide="plus" style="width:16px;height:16px;"></i>
+                          Dodaj dzień
+                        </button>
+                        <button class="btn" data-action="plan-back">
+                          <i data-lucide="arrow-left" style="width:16px;height:16px;"></i>
+                          Wróć do listy
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="panel soft" style="padding:12px; min-width: 270px;">
+                  <div class="small muted">Wskazówki</div>
+                  <div class="hr"></div>
+                  <div class="small muted" style="line-height:1.7;">
+                    <div>• Zmieniaj kolejność ćwiczeń: ↑/↓.</div>
+                    <div>• Start planu tworzy serię dla każdego „sets”.</div>
+                    <div>• W razie potrzeby dodaj własne ćwiczenia w ATLAS.</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            ${(p.days||[]).map(d => renderPlanDay(p, d)).join('')}
+          </div>
+        `;
+      }
+
+      function renderPlanDay(p, d){
+        const list = d.exercises || [];
+        return `
+          <div class="panel" style="padding:14px;">
+            <div class="row" style="justify-content: space-between; align-items:flex-start;">
+              <div class="stack" style="gap:6px; flex:1;">
+                <div class="row" style="justify-content: space-between;">
+                  <div class="badge cyan"><i data-lucide="calendar-days" style="width:14px;height:14px;"></i><span>${escapeHtml(d.name)}</span></div>
+                  <div class="row">
+                    <button class="btn" data-action="plan-day-add-exercise" data-planid="${p.id}" data-dayid="${d.id}">
+                      <i data-lucide="plus" style="width:16px;height:16px;"></i>
+                      Dodaj ćwiczenie
+                    </button>
+                    <button class="btn danger" data-action="plan-day-remove" data-planid="${p.id}" data-dayid="${d.id}">
+                      <i data-lucide="trash-2" style="width:16px;height:16px;"></i>
+                      Usuń dzień
+                    </button>
+                  </div>
+                </div>
+
+                <div class="grid2">
+                  <div class="stack">
+                    <label class="small muted">Nazwa dnia</label>
+                    <input class="input" value="${escapeHtml(d.name||'')}" data-action="plan-day-field" data-planid="${p.id}" data-dayid="${d.id}" data-field="name" />
+                  </div>
+                  <div class="stack">
+                    <label class="small muted">Start od razu</label>
+                    <div class="row">
+                      <button class="btn primary" data-action="start-from-plan" data-planid="${p.id}" data-dayid="${d.id}">
+                        <i data-lucide="rocket" style="width:16px;height:16px;"></i>
+                        Start ${escapeHtml(d.name)}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="hr"></div>
+
+            ${list.length ? `
+              <div class="hscroll">
+                <table>
+                  <thead>
+                    <tr>
+                      <th style="min-width:260px;">Ćwiczenie</th>
+                      <th style="min-width:90px;">Serie</th>
+                      <th style="min-width:120px;">Powt.</th>
+                      <th style="min-width:140px;">Ciężar (kg)</th>
+                      <th style="min-width:120px;">RPE</th>
+                      <th style="min-width:120px;">Tempo</th>
+                      <th style="min-width:240px;">Notatki</th>
+                      <th style="min-width:140px;">Kolejność</th>
+                      <th style="min-width:90px; text-align:right;">Usuń</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    ${list.map((x, idx) => `
+                      <tr>
+                        <td class="mono">${escapeHtml(x.exerciseName || '')}</td>
+                        <td><input class="input mono" style="padding:8px 10px;" type="number" min="1" max="20" step="1"
+                            value="${escapeHtml(x.sets ?? 3)}"
+                            data-action="plan-ex-field" data-planid="${p.id}" data-dayid="${d.id}" data-pxid="${x.id}" data-field="sets"></td>
+                        <td><input class="input mono" style="padding:8px 10px;" type="number" min="1" max="200" step="1"
+                            value="${escapeHtml(x.reps ?? 8)}"
+                            data-action="plan-ex-field" data-planid="${p.id}" data-dayid="${d.id}" data-pxid="${x.id}" data-field="reps"></td>
+                        <td><input class="input mono" style="padding:8px 10px;" type="number" min="0" step="0.5"
+                            value="${escapeHtml(x.weight ?? 0)}"
+                            data-action="plan-ex-field" data-planid="${p.id}" data-dayid="${d.id}" data-pxid="${x.id}" data-field="weight"></td>
+                        <td><input class="input mono" style="padding:8px 10px;" type="number" min="0" max="10" step="0.5"
+                            value="${escapeHtml(x.rpe ?? 8)}"
+                            data-action="plan-ex-field" data-planid="${p.id}" data-dayid="${d.id}" data-pxid="${x.id}" data-field="rpe"></td>
+                        <td><input class="input mono" style="padding:8px 10px;" value="${escapeHtml(x.tempo ?? '')}"
+                            data-action="plan-ex-field" data-planid="${p.id}" data-dayid="${d.id}" data-pxid="${x.id}" data-field="tempo"></td>
+                        <td><input class="input" style="padding:8px 10px;" value="${escapeHtml(x.notes ?? '')}"
+                            data-action="plan-ex-field" data-planid="${p.id}" data-dayid="${d.id}" data-pxid="${x.id}" data-field="notes"></td>
+                        <td>
+                          <div class="row" style="gap:8px;">
+                            <button class="btn" data-action="plan-ex-move" data-planid="${p.id}" data-dayid="${d.id}" data-index="${idx}" data-dir="-1" title="Góra">
+                              <i data-lucide="chevron-up" style="width:16px;height:16px;"></i>
+                            </button>
+                            <button class="btn" data-action="plan-ex-move" data-planid="${p.id}" data-dayid="${d.id}" data-index="${idx}" data-dir="1" title="Dół">
+                              <i data-lucide="chevron-down" style="width:16px;height:16px;"></i>
+                            </button>
+                          </div>
+                        </td>
+                        <td style="text-align:right;">
+                          <button class="btn danger" data-action="plan-ex-remove" data-planid="${p.id}" data-dayid="${d.id}" data-pxid="${x.id}">
+                            <i data-lucide="trash" style="width:16px;height:16px;"></i>
+                          </button>
+                        </td>
+                      </tr>
+                    `).join('')}
+                  </tbody>
+                </table>
+              </div>
+            ` : `
+              <div class="small muted">Brak ćwiczeń w tym dniu. Dodaj pierwsze.</div>
+            `}
+          </div>
+        `;
+      }
+
+      // ----------------------------
+      // Progress view
+      // ----------------------------
+      function renderProgressView(){
+        const sum = computeThisWeekSummary();
+        const series = computeWeeklyVolumeSeries(8);
+        const dist = computeMuscleDistributionThisWeek();
+        return `
+          <div class="stack">
+            <div class="panel glow-cyan" style="padding:14px;">
+              <div class="row" style="justify-content: space-between;">
+                <div class="stack" style="gap:4px;">
+                  <div class="badge cyan"><i data-lucide="bar-chart-3" style="width:14px;height:14px;"></i><span>Śledzenie progresu & statystyki</span></div>
+                  <div class="small muted">Wszystko liczone offline na podstawie historii (localStorage).</div>
+                </div>
+                <div class="badge purple"><i data-lucide="cpu" style="width:14px;height:14px;"></i><span>CSS Charts</span></div>
+              </div>
+            </div>
+
+            <div class="panel" style="padding:14px;">
+              <div class="row" style="justify-content: space-between;">
+                <div class="badge emerald"><i data-lucide="calendar-check" style="width:14px;height:14px;"></i><span>Ten tydzień</span></div>
+                <div class="small muted">Tydzień liczony od poniedziałku.</div>
+              </div>
+              <div class="hr"></div>
+              <div class="grid4">
+                <div class="kpi">
+                  <div class="small muted">Treningi</div>
+                  <div class="v mono">${sum.workouts}</div>
+                </div>
+                <div class="kpi">
+                  <div class="small muted">Czas</div>
+                  <div class="v mono">${fmtCompactDuration(sum.timeSec)}</div>
+                </div>
+                <div class="kpi">
+                  <div class="small muted">Tonaż</div>
+                  <div class="v mono">${round0(sum.tonnage)} <span class="small muted">kg</span></div>
+                </div>
+                <div class="kpi">
+                  <div class="small muted">Serie (zapisane)</div>
+                  <div class="v mono">${sum.sets}</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="grid2">
+              <div class="panel" style="padding:14px;">
+                <div class="row" style="justify-content: space-between;">
+                  <div class="badge purple"><i data-lucide="trending-up" style="width:14px;height:14px;"></i><span>Objętość tygodniowa (tonaż)</span></div>
+                  <div class="small muted">Ostatnie 8 tygodni</div>
+                </div>
+                <div class="hr"></div>
+                <div id="weeklyVolumeChart" class="barwrap" aria-label="Wykres objętości tygodniowej"></div>
+                <div class="small muted" style="margin-top:10px;">
+                  Seria = suma <span class="mono">ciężar × powtórzenia</span> dla wykonanych serii.
+                </div>
+              </div>
+
+              <div class="panel" style="padding:14px;">
+                <div class="row" style="justify-content: space-between;">
+                  <div class="badge cyan"><i data-lucide="pie-chart" style="width:14px;height:14px;"></i><span>Rozkład objętości na partie</span></div>
+                  <div class="small muted">Ten tydzień</div>
+                </div>
+                <div class="hr"></div>
+
+                <div class="stack" id="muscleDist">
+                  ${dist.map(x => `
+                    <div class="panel soft" style="padding:10px; border-radius: 14px;">
+                      <div class="row" style="justify-content: space-between;">
+                        <div class="row" style="gap:10px;">
+                          <div class="badge ${x.pct>0.33?'emerald':x.pct>0.18?'cyan':'purple'}">${escapeHtml(x.group)}</div>
+                          <div class="small muted mono">${round0(x.value)} kg</div>
+                        </div>
+                        <div class="badge mono">${round0(x.pct*100)}%</div>
+                      </div>
+                      <div style="height:10px; margin-top:10px; border-radius:999px; border:1px solid rgba(148,163,184,.14); background: rgba(2,6,23,.25); overflow:hidden;">
+                        <div style="height:100%; width:${Math.max(2, x.pct*100)}%; background: linear-gradient(90deg, rgba(34,211,238,.85), rgba(168,85,247,.55)); box-shadow: 0 0 0 1px rgba(34,211,238,.12);"></div>
+                      </div>
+                    </div>
+                  `).join('')}
+                </div>
+
+                <div class="small muted" style="margin-top:10px;">
+                  Partie bazują na kategorii ćwiczenia (Biceps/Triceps → Ramiona).
+                </div>
+              </div>
+            </div>
+          </div>
+        `;
+      }
+
+      function renderProgressCharts(){
+        const series = computeWeeklyVolumeSeries(8);
+        const host = document.getElementById('weeklyVolumeChart');
+        if (!host) return;
+        const max = Math.max(1, ...series.map(x => x.tonnage));
+        host.innerHTML = series.map(x => {
+          const h = Math.round((x.tonnage / max) * 100);
+          const pct = clamp(h, 0, 100);
+          return `
+            <div class="stack" style="gap:6px; align-items:center; width:100%;">
+              <div class="bar" style="height: ${Math.max(6, Math.round(1.55*pct))}px;">
+                <div class="lbl mono">${escapeHtml(x.label)}</div>
+              </div>
+              <div class="mono small muted">${round0(x.tonnage)}</div>
+            </div>
+          `;
+        }).join('');
+      }
+
+      // ----------------------------
+      // PRs view
+      // ----------------------------
+      function renderPRsView(){
+        const prs = computePRs();
+        const ach = computeAchievements();
+        return `
+          <div class="stack">
+            <div class="panel glow-purple" style="padding:14px;">
+              <div class="row" style="justify-content: space-between;">
+                <div class="stack" style="gap:4px;">
+                  <div class="badge purple"><i data-lucide="trophy" style="width:14px;height:14px;"></i><span>Rekordy / PR</span></div>
+                  <div class="small muted">PR liczone na podstawie wykonanych serii (status: Zrobione). Estymowane 1RM: Epley.</div>
+                </div>
+                <div class="badge cyan mono">${App.state.history.length} treningów w historii</div>
+              </div>
+            </div>
+
+            <div class="grid2">
+              <div class="panel" style="padding:14px;">
+                <div class="row" style="justify-content: space-between;">
+                  <div class="badge cyan"><i data-lucide="medal" style="width:14px;height:14px;"></i><span>Osiągnięcia</span></div>
+                  <div class="small muted">mini odznaki</div>
+                </div>
+                <div class="hr"></div>
+
+                <div class="stack">
+                  ${ach.map(a => `
+                    <div class="panel soft" style="padding:12px;">
+                      <div class="row" style="justify-content: space-between;">
+                        <div class="stack" style="gap:4px; min-width:0;">
+                          <div class="badge ${a.unlocked?'emerald':'rose'}">
+                            <i data-lucide="${a.icon}" style="width:14px;height:14px;"></i>
+                            <span style="font-weight:800;">${escapeHtml(a.name)}</span>
+                            <span class="mono">${a.unlocked?'UNLOCKED':'LOCKED'}</span>
+                          </div>
+                          <div class="small muted">${escapeHtml(a.desc)}</div>
+                        </div>
+                      </div>
+                    </div>
+                  `).join('')}
+                </div>
+              </div>
+
+              <div class="panel" style="padding:14px;">
+                <div class="row" style="justify-content: space-between;">
+                  <div class="badge emerald"><i data-lucide="flame" style="width:14px;height:14px;"></i><span>PR per ćwiczenie</span></div>
+                  <div class="small muted">${prs.length} pozycji</div>
+                </div>
+                <div class="hr"></div>
+
+                ${prs.length ? `
+                  <div class="hscroll">
+                    <table>
+                      <thead>
+                        <tr>
+                          <th>Ćwiczenie</th>
+                          <th>Kategoria</th>
+                          <th>Max ciężar</th>
+                          <th>Max powt.</th>
+                          <th>Max objętość (seria)</th>
+                          <th>Est. 1RM</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        ${prs.map(p => `
+                          <tr>
+                            <td style="font-weight:700;">${escapeHtml(p.exerciseName)}</td>
+                            <td class="muted small">${escapeHtml(p.category || '—')}</td>
+                            <td class="mono">${round1(p.maxWeight)} kg</td>
+                            <td class="mono">${round0(p.maxReps)}</td>
+                            <td class="mono">${round0(p.maxSetVolume)} kg</td>
+                            <td class="mono">${round1(p.maxEst1RM)} kg</td>
+                          </tr>
+                        `).join('')}
+                      </tbody>
+                    </table>
+                  </div>
+                ` : `
+                  <div class="small muted">Brak danych PR — wykonaj i zakończ co najmniej jeden trening.</div>
+                `}
+              </div>
+            </div>
+          </div>
+        `;
+      }
+
+      // ----------------------------
+      // History view
+      // ----------------------------
+      function renderHistoryView(){
+        const h = App.state.history;
+        return `
+          <div class="stack">
+            <div class="panel glow-cyan" style="padding:14px;">
+              <div class="row" style="justify-content: space-between;">
+                <div class="stack" style="gap:4px;">
+                  <div class="badge cyan"><i data-lucide="calendar" style="width:14px;height:14px;"></i><span>Historia (kalendarz)</span></div>
+                  <div class="small muted">Kliknij wpis, aby rozwinąć szczegóły ćwiczeń i serii.</div>
+                </div>
+                <div class="row">
+                  <button class="btn danger" data-action="history-clear" title="Usuń całą historię">
+                    <i data-lucide="trash-2" style="width:16px;height:16px;"></i>
+                    Wyczyść
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div class="panel" style="padding:14px;">
+              ${h.length ? `
+                <div class="stack">
+                  ${h.map(w => renderHistoryItem(w)).join('')}
+                </div>
+              ` : `
+                <div class="small muted">Brak zapisanych treningów.</div>
+              `}
+            </div>
+          </div>
+        `;
+      }
+
+      function renderHistoryItem(w){
+        const expanded = App.ui.historyExpanded.has(w.id);
+        const hdr = `
+          <div class="panel soft" style="padding:12px; border-radius: 16px;">
+            <button class="btn navbtn ${expanded?'active':''}" data-action="history-toggle" data-id="${w.id}" style="justify-content: space-between;">
+              <span class="stack" style="gap:2px; align-items:flex-start; min-width:0;">
+                <span class="row" style="gap:8px; flex-wrap:wrap;">
+                  <span style="font-weight:900; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width: 520px;">${escapeHtml(w.name)}</span>
+                  <span class="badge mono">${fmtDateTime(w.endedAt || w.startedAt)}</span>
+                  <span class="badge cyan mono">${fmtCompactDuration(w.durationSec||0)}</span>
+                </span>
+                <span class="row" style="gap:8px; flex-wrap:wrap;">
+                  <span class="badge emerald"><i data-lucide="sigma" style="width:14px;height:14px;"></i> <span class="mono">${round0(w.tonnage||0)}</span> kg</span>
+                  <span class="badge"><i data-lucide="list" style="width:14px;height:14px;"></i> serie <span class="mono">${round0(w.totalSets||0)}</span></span>
+                  <span class="badge"><i data-lucide="rows-3" style="width:14px;height:14px;"></i> ćwiczeń <span class="mono">${(w.exercises||[]).length}</span></span>
+                </span>
+              </span>
+              <span class="row" style="gap:8px;">
+                <button class="btn danger" data-action="history-delete" data-id="${w.id}" title="Usuń wpis">
+                  <i data-lucide="trash" style="width:16px;height:16px;"></i>
+                </button>
+                <i data-lucide="${expanded?'chevron-up':'chevron-down'}" style="width:18px;height:18px; opacity:.8;"></i>
+              </span>
+            </button>
+          </div>
+        `;
+
+        if (!expanded) return hdr;
+
+        const body = `
+          <div class="panel soft" style="padding:12px; border-radius: 16px; margin-top: 10px;">
+            ${(w.exercises||[]).map(ex => `
+              <div class="panel soft" style="padding:12px; border-radius: 14px; margin-bottom: 10px;">
+                <div class="row" style="justify-content: space-between;">
+                  <div class="row" style="gap:10px; flex-wrap:wrap;">
+                    <div class="badge cyan"><i data-lucide="focus" style="width:14px;height:14px;"></i><span>${escapeHtml(ex.name)}</span></div>
+                    <div class="badge">${escapeHtml(ex.category||'—')}</div>
+                    ${ex.tempo ? `<div class="badge purple mono">tempo ${escapeHtml(ex.tempo)}</div>` : ''}
+                  </div>
+                </div>
+                ${ex.notes ? `<div class="small muted" style="margin-top:8px;">Notatki: ${escapeHtml(ex.notes)}</div>` : ''}
+
+                <div class="hr"></div>
+
+                <div class="hscroll">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Typ</th>
+                        <th>Ciężar</th>
+                        <th>Powt.</th>
+                        <th>RPE</th>
+                        <th>Objętość</th>
+                        <th>Status</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      ${(ex.sets||[]).map(s => `
+                        <tr>
+                          <td class="muted small">${escapeHtml(SetType[s.type] || s.type || '—')}</td>
+                          <td class="mono">${round1(s.weight||0)} kg</td>
+                          <td class="mono">${round0(s.reps||0)}</td>
+                          <td class="mono">${round1(s.rpe||0)}</td>
+                          <td class="mono">${round0((safeNum(s.weight,0)*safeNum(s.reps,0)))} kg</td>
+                          <td>${statusBadge(s.status)}</td>
+                        </tr>
+                      `).join('')}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            `).join('')}
+          </div>
+        `;
+
+        return `<div>${hdr}${body}</div>`;
+      }
+
+      // ----------------------------
+      // Calculators view
+      // ----------------------------
+      function renderCalculatorsView(){
+        return `
+          <div class="stack">
+            <div class="panel glow-purple" style="padding:14px;">
+              <div class="row" style="justify-content: space-between;">
+                <div class="stack" style="gap:4px;">
+                  <div class="badge purple"><i data-lucide="calculator" style="width:14px;height:14px;"></i><span>Kalkulatory</span></div>
+                  <div class="small muted">1RM (Epley), talerze na sztangę, BMR/TDEE (Mifflin-St Jeor).</div>
+                </div>
+                <div class="badge cyan"><i data-lucide="shield" style="width:14px;height:14px;"></i><span>Offline</span></div>
+              </div>
+            </div>
+
+            <div class="grid2">
+              <div class="panel" style="padding:14px;">
+                <div class="badge cyan"><i data-lucide="sigma" style="width:14px;height:14px;"></i><span>Kalkulator 1RM (Epley)</span></div>
+                <div class="hr"></div>
+                <div class="grid2">
+                  <div class="stack">
+                    <label class="small muted">Ciężar (kg)</label>
+                    <input class="input mono" id="calc1rmW" type="number" min="0" step="0.5" value="80">
+                  </div>
+                  <div class="stack">
+                    <label class="small muted">Powtórzenia</label>
+                    <input class="input mono" id="calc1rmR" type="number" min="1" step="1" value="5">
+                  </div>
+                </div>
+                <div class="hr"></div>
+                <div class="row" style="justify-content: space-between;">
+                  <div class="badge emerald">Est. 1RM: <span class="mono" id="calc1rmOut">—</span> kg</div>
+                  <button class="btn primary" data-action="calc-1rm">
+                    <i data-lucide="refresh-cw" style="width:16px;height:16px;"></i>
+                    Przelicz
+                  </button>
+                </div>
+                <div class="hr"></div>
+                <div class="panel soft" style="padding:12px;">
+                  <div class="small muted">Tabela procentowa (50%–95%)</div>
+                  <div class="hr"></div>
+                  <div class="grid2" id="calc1rmTable"></div>
+                </div>
+              </div>
+
+              <div class="panel" style="padding:14px;">
+                <div class="badge purple"><i data-lucide="disc-3" style="width:14px;height:14px;"></i><span>Kalkulator talerzy</span></div>
+                <div class="hr"></div>
+
+                <div class="grid2">
+                  <div class="stack">
+                    <label class="small muted">Waga docelowa (kg)</label>
+                    <input class="input mono" id="platesTarget" type="number" min="20" step="0.5" value="100">
+                  </div>
+                  <div class="stack">
+                    <label class="small muted">Gryf (kg)</label>
+                    <input class="input mono" id="platesBar" type="number" min="0" step="0.5" value="20">
+                  </div>
+                </div>
+
+                <div class="hr"></div>
+
+                <div class="row" style="justify-content: space-between;">
+                  <div class="badge cyan">Na stronę: <span class="mono" id="platesPerSide">—</span> kg</div>
+                  <button class="btn primary" data-action="calc-plates">
+                    <i data-lucide="refresh-cw" style="width:16px;height:16px;"></i>
+                    Przelicz
+                  </button>
+                </div>
+
+                <div class="hr"></div>
+
+                <div class="panel soft" style="padding:12px;">
+                  <div class="small muted">Krążki na jedną stronę (25,20,15,10,5,2.5,1.25)</div>
+                  <div class="hr"></div>
+                  <div id="platesOut" class="row" style="gap:8px; flex-wrap:wrap;"></div>
+                  <div class="small muted" style="margin-top:10px;" id="platesNote"></div>
+                </div>
+              </div>
+            </div>
+
+            <div class="panel" style="padding:14px;">
+              <div class="badge emerald"><i data-lucide="heart-pulse" style="width:14px;height:14px;"></i><span>BMR / TDEE (Mifflin-St Jeor)</span></div>
+              <div class="hr"></div>
+
+              <div class="grid4">
+                <div class="stack">
+                  <label class="small muted">Płeć</label>
+                  <select class="select" id="tdeeSex">
+                    <option value="male">Mężczyzna</option>
+                    <option value="female">Kobieta</option>
+                  </select>
+                </div>
+                <div class="stack">
+                  <label class="small muted">Wiek</label>
+                  <input class="input mono" id="tdeeAge" type="number" min="10" max="100" step="1" value="30">
+                </div>
+                <div class="stack">
+                  <label class="small muted">Wzrost (cm)</label>
+                  <input class="input mono" id="tdeeHeight" type="number" min="120" max="230" step="1" value="180">
+                </div>
+                <div class="stack">
+                  <label class="small muted">Waga (kg)</label>
+                  <input class="input mono" id="tdeeWeight" type="number" min="35" max="250" step="0.1" value="80">
+                </div>
+              </div>
+
+              <div class="hr"></div>
+
+              <div class="grid2">
+                <div class="stack">
+                  <label class="small muted">Aktywność</label>
+                  <select class="select" id="tdeeAct">
+                    <option value="1.2">Siedzący (1.2)</option>
+                    <option value="1.375">Lekka (1.375)</option>
+                    <option value="1.55" selected>Umiarkowana (1.55)</option>
+                    <option value="1.725">Wysoka (1.725)</option>
+                    <option value="1.9">Bardzo wysoka (1.9)</option>
+                  </select>
+                </div>
+                <div class="stack">
+                  <label class="small muted">Akcja</label>
+                  <div class="row" style="justify-content:flex-start;">
+                    <button class="btn primary" data-action="calc-tdee">
+                      <i data-lucide="refresh-cw" style="width:16px;height:16px;"></i>
+                      Przelicz
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <div class="hr"></div>
+
+              <div class="grid3">
+                <div class="kpi">
+                  <div class="small muted">BMR</div>
+                  <div class="v mono" id="tdeeBmr">—</div>
+                </div>
+                <div class="kpi">
+                  <div class="small muted">TDEE</div>
+                  <div class="v mono" id="tdeeOut">—</div>
+                </div>
+                <div class="kpi">
+                  <div class="small muted">Sugestia (deficyt ~15%)</div>
+                  <div class="v mono" id="tdeeCut">—</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        `;
+      }
+
+      function calc1rmUI(){
+        const w = safeNum(document.getElementById('calc1rmW')?.value, 0);
+        const r = safeNum(document.getElementById('calc1rmR')?.value, 0);
+        const rm = epley1RM(w, r);
+        const out = document.getElementById('calc1rmOut');
+        if (out) out.textContent = String(round1(rm));
+
+        const tbl = document.getElementById('calc1rmTable');
+        if (tbl){
+          const rows = [];
+          for (let pct=50; pct<=95; pct+=5){
+            const load = rm * (pct/100);
+            rows.push(`
+              <div class="panel soft" style="padding:10px; border-radius:14px;">
+                <div class="row" style="justify-content: space-between;">
+                  <div class="badge cyan mono">${pct}%</div>
+                  <div class="mono">${round1(load)} kg</div>
+                </div>
+              </div>
+            `);
+          }
+          tbl.innerHTML = rows.join('');
+        }
+      }
+
+      function calcPlatesUI(){
+        const target = safeNum(document.getElementById('platesTarget')?.value, 0);
+        const bar = safeNum(document.getElementById('platesBar')?.value, 20);
+        const outPer = document.getElementById('platesPerSide');
+        const out = document.getElementById('platesOut');
+        const note = document.getElementById('platesNote');
+
+        const remaining = target - bar;
+        if (remaining < 0){
+          if (outPer) outPer.textContent = '—';
+          if (out) out.innerHTML = '';
+          if (note) note.textContent = 'Waga docelowa jest mniejsza niż gryf.';
+          return;
+        }
+        const perSide = remaining / 2;
+        if (outPer) outPer.textContent = String(round1(perSide));
+
+        // greedy
+        const plates = [25,20,15,10,5,2.5,1.25];
+        let left = perSide;
+        const take = [];
+        for (const p of plates){
+          let count = 0;
+          while (left + 1e-9 >= p){
+            left = round1(left - p);
+            count++;
+            if (count > 20) break;
+          }
+          if (count) take.push({ p, count });
+        }
+
+        if (out){
+          out.innerHTML = take.length
+            ? take.map(x => `<span class="badge purple mono">${x.count}×${x.p}kg</span>`).join('')
+            : `<span class="small muted">Brak krążków (tylko gryf).</span>`;
+        }
+        if (note){
+          const rem = round1(left);
+          note.textContent = rem > 0 ? `Nie da się ułożyć dokładnie — brakujące na stronę: ${rem} kg.` : 'Ułożenie dokładne.';
+        }
+      }
+
+      function calcTDEEUI(){
+        const sex = document.getElementById('tdeeSex')?.value || 'male';
+        const age = clamp(round0(safeNum(document.getElementById('tdeeAge')?.value, 30)), 10, 100);
+        const h = clamp(round0(safeNum(document.getElementById('tdeeHeight')?.value, 180)), 120, 230);
+        const w = clamp(round1(safeNum(document.getElementById('tdeeWeight')?.value, 80)), 35, 250);
+        const act = safeNum(document.getElementById('tdeeAct')?.value, 1.55);
+
+        // Mifflin-St Jeor
+        let bmr = 10*w + 6.25*h - 5*age;
+        bmr += (sex === 'male') ? 5 : -161;
+
+        const tdee = bmr * act;
+        const cut = tdee * 0.85;
+
+        const elB = document.getElementById('tdeeBmr');
+        const elT = document.getElementById('tdeeOut');
+        const elC = document.getElementById('tdeeCut');
+        if (elB) elB.textContent = `${round0(bmr)} kcal`;
+        if (elT) elT.textContent = `${round0(tdee)} kcal`;
+        if (elC) elC.textContent = `${round0(cut)} kcal`;
+      }
+
+      // ----------------------------
+      // Atlas view
+      // ----------------------------
+      function renderAtlasView(){
+        const cats = ['Klatka','Plecy','Nogi','Barki','Biceps','Triceps','Brzuch'];
+        const rows = App.state.exercises
+          .slice()
+          .sort((a,b) => (a.category||'').localeCompare(b.category||'') || a.name.localeCompare(b.name));
+
+        return `
+          <div class="stack">
+            <div class="panel glow-cyan" style="padding:14px;">
+              <div class="row" style="justify-content: space-between;">
+                <div class="stack" style="gap:4px;">
+                  <div class="badge cyan"><i data-lucide="book-open" style="width:14px;height:14px;"></i><span>Baza ćwiczeń (Atlas)</span></div>
+                  <div class="small muted">Wbudowane + własne. Własne ćwiczenia zapisują się na stałe w localStorage.</div>
+                </div>
+                <div class="badge purple mono">${rows.length} ćwiczeń</div>
+              </div>
+            </div>
+
+            <div class="grid2">
+              <div class="panel" style="padding:14px;">
+                <div class="badge emerald"><i data-lucide="plus-circle" style="width:14px;height:14px;"></i><span>Dodaj własne ćwiczenie</span></div>
+                <div class="hr"></div>
+
+                <div class="stack">
+                  <div class="grid2">
+                    <div class="stack">
+                      <label class="small muted">Nazwa</label>
+                      <input class="input" id="customExName" placeholder="np. Hip thrust na maszynie" />
+                    </div>
+                    <div class="stack">
+                      <label class="small muted">Kategoria</label>
+                      <select class="select" id="customExCat">
+                        ${cats.map(c => `<option>${c}</option>`).join('')}
+                      </select>
+                    </div>
+                  </div>
+
+                  <div class="grid2">
+                    <div class="stack">
+                      <label class="small muted">Główna partia</label>
+                      <input class="input" id="customExPrimary" placeholder="np. Nogi" />
+                    </div>
+                    <div class="stack">
+                      <label class="small muted">Alternatywy (oddziel przecinkiem)</label>
+                      <input class="input" id="customExAlts" placeholder="np. RDL, good morning" />
+                    </div>
+                  </div>
+
+                  <div class="stack">
+                    <label class="small muted">Opis</label>
+                    <textarea class="textarea" id="customExDesc" placeholder="Krótka wskazówka techniczna..."></textarea>
+                  </div>
+
+                  <div class="row" style="justify-content:flex-end;">
+                    <button class="btn primary" data-action="atlas-add-custom">
+                      <i data-lucide="save" style="width:16px;height:16px;"></i>
+                      Zapisz ćwiczenie
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <div class="panel" style="padding:14px;">
+                <div class="badge purple"><i data-lucide="list" style="width:14px;height:14px;"></i><span>Atlas — tabela</span></div>
+                <div class="hr"></div>
+                <div class="grid2">
+                  <div class="stack">
+                    <label class="small muted">Szukaj</label>
+                    <input class="input" id="atlasSearch" placeholder="Szukaj po nazwie..." />
+                  </div>
+                  <div class="stack">
+                    <label class="small muted">Filtr kategorii</label>
+                    <select class="select" id="atlasCat">
+                      <option value="">Wszystkie</option>
+                      ${cats.map(c => `<option>${c}</option>`).join('')}
+                    </select>
+                  </div>
+                </div>
+
+                <div class="hr"></div>
+
+                <div class="panel soft" style="padding:10px; max-height: 55vh; overflow:auto;">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Nazwa</th>
+                        <th>Kategoria</th>
+                        <th>Opis</th>
+                        <th>Alternatywy</th>
+                        <th>Źródło</th>
+                        <th style="text-align:right;">Akcja</th>
+                      </tr>
+                    </thead>
+                    <tbody id="atlasTbody">
+                      ${rows.map(ex => `
+                        <tr data-atlas-row="1" data-name="${escapeHtml(ex.name).toLowerCase()}" data-cat="${escapeHtml(ex.category||'')}">
+                          <td style="font-weight:700;">${escapeHtml(ex.name)}</td>
+                          <td class="muted small">${escapeHtml(ex.category||'—')}</td>
+                          <td class="small muted">${escapeHtml(ex.desc||'')}</td>
+                          <td class="small muted">${escapeHtml((ex.alts||[]).join(', '))}</td>
+                          <td>${ex.source === 'builtin' ? `<span class="badge cyan">builtin</span>` : `<span class="badge purple">custom</span>`}</td>
+                          <td style="text-align:right;">
+                            <button class="btn" data-action="atlas-quick-add-session" data-exid="${ex.id}" title="Dodaj do aktywnej sesji">
+                              <i data-lucide="plus" style="width:16px;height:16px;"></i>
+                            </button>
+                            ${ex.source === 'custom' ? `
+                              <button class="btn danger" data-action="atlas-delete" data-exid="${ex.id}" title="Usuń własne ćwiczenie">
+                                <i data-lucide="trash" style="width:16px;height:16px;"></i>
+                              </button>
+                            ` : ''}
+                          </td>
+                        </tr>
+                      `).join('')}
+                    </tbody>
+                  </table>
+                </div>
+
+                <div class="small muted" style="margin-top:10px;">
+                  Usuwanie działa tylko dla ćwiczeń <span class="badge purple">custom</span>.
+                </div>
+              </div>
+            </div>
+          </div>
+        `;
+      }
+
+      function atlasApplyFilters(){
+        const q = (document.getElementById('atlasSearch')?.value || '').trim().toLowerCase();
+        const cat = (document.getElementById('atlasCat')?.value || '').trim();
+        document.querySelectorAll('[data-atlas-row="1"]').forEach(tr => {
+          const name = tr.getAttribute('data-name') || '';
+          const c = tr.getAttribute('data-cat') || '';
+          const ok = (!q || name.includes(q)) && (!cat || c === cat);
+          tr.classList.toggle('hide', !ok);
+        });
+      }
+
+      // ----------------------------
+      // Backup view
+      // ----------------------------
+      function renderBackupView(){
+        return `
+          <div class="stack">
+            <div class="panel glow-cyan" style="padding:14px;">
+              <div class="row" style="justify-content: space-between;">
+                <div class="stack" style="gap:4px;">
+                  <div class="badge cyan"><i data-lucide="hard-drive" style="width:14px;height:14px;"></i><span>Synchronizacja & kopia</span></div>
+                  <div class="small muted">Eksport/Import JSON przenosi całą bazę: ćwiczenia, plany, historię, aktywną sesję.</div>
+                </div>
+                <div class="badge purple mono">localStorage</div>
+              </div>
+            </div>
+
+            <div class="grid2">
+              <div class="panel" style="padding:14px;">
+                <div class="badge emerald"><i data-lucide="download" style="width:14px;height:14px;"></i><span>Eksport</span></div>
+                <div class="hr"></div>
+                <div class="small muted">Pobiera plik JSON. Możesz wrzucić na telefon/PC i zaimportować.</div>
+                <div class="hr"></div>
+                <button class="btn primary" data-action="export-json">
+                  <i data-lucide="download" style="width:16px;height:16px;"></i>
+                  Eksportuj do JSON
+                </button>
+              </div>
+
+              <div class="panel" style="padding:14px;">
+                <div class="badge rose"><i data-lucide="upload" style="width:14px;height:14px;"></i><span>Import</span></div>
+                <div class="hr"></div>
+                <div class="small muted">Import nadpisuje localStorage. Zrób export przed importem.</div>
+                <div class="hr"></div>
+                <button class="btn danger" data-action="open-import">
+                  <i data-lucide="upload" style="width:16px;height:16px;"></i>
+                  Importuj z JSON
+                </button>
+              </div>
+            </div>
+
+            <div class="panel" style="padding:14px;">
+              <div class="badge purple"><i data-lucide="shield-alert" style="width:14px;height:14px;"></i><span>Narzędzia awaryjne</span></div>
+              <div class="hr"></div>
+              <div class="row" style="justify-content: space-between;">
+                <div class="stack" style="gap:4px;">
+                  <div style="font-weight:800;">Reset aplikacji</div>
+                  <div class="small muted">Czyści localStorage IronForge PRO i przywraca domyślne dane.</div>
+                </div>
+                <button class="btn danger" data-action="hard-reset">
+                  <i data-lucide="trash-2" style="width:16px;height:16px;"></i>
+                  Reset
+                </button>
+              </div>
+            </div>
+          </div>
+        `;
+      }
+
+      // ----------------------------
+      // Rest timer + stopwatch UI
+      // ----------------------------
+      function updateRestUI(){
+        const label = document.getElementById('restLabel');
+        const hint = document.getElementById('restHint');
+        const ring = document.getElementById('restRing');
+        const ringText = document.getElementById('restRingText');
+
+        if (!label || !ring || !ringText) return;
+
+        if (!App.ui.rest.running || !App.ui.rest.endsAt){
+          label.textContent = '—';
+          hint.textContent = '';
+          ring.style.setProperty('--p', '0%');
+          ringText.textContent = '0%';
+          return;
+        }
+
+        const now = Date.now();
+        const total = App.ui.rest.durationSec * 1000;
+        const leftMs = Math.max(0, App.ui.rest.endsAt - now);
+        const leftSec = Math.ceil(leftMs / 1000);
+        const done = clamp((total - leftMs) / Math.max(1,total), 0, 1);
+        const pct = Math.round(done * 100);
+
+        label.textContent = `${leftSec}s`;
+        hint.textContent = leftSec <= 3 ? 'gotowy...' : '';
+        ring.style.setProperty('--p', pct + '%');
+        ringText.textContent = pct + '%';
+
+        if (leftMs <= 0){
+          App.ui.rest.running = false;
+          App.ui.rest.endsAt = null;
+          App.ui.rest.startedAt = null;
+          App.ui.rest.durationSec = 0;
+          App.ui.rest.fromSet = null;
+          beep();
+          toast('Koniec odpoczynku.', 'success', 2500);
+        }
+      }
+
+      function updateWorkoutStopwatchUI(){
+        const el = document.getElementById('workoutStopwatch');
+        if (!el) return;
+        const sess = App.state.sessionActive;
+        if (!sess){
+          el.textContent = '00:00:00';
+          return;
+        }
+        const sec = Math.floor((Date.now() - (sess.startedAt || Date.now())) / 1000);
+        el.textContent = fmtDuration(sec);
+      }
+
+      function ensureTick(){
+        if (App.ui.tickHandle) return;
+        App.ui.tickHandle = setInterval(() => {
+          updateRestUI();
+          updateWorkoutStopwatchUI();
+          document.getElementById('nowBadge').textContent = fmtDateTime(Date.now());
+        }, 250);
+      }
+
+      // ----------------------------
+      // Exercise picker
+      // ----------------------------
+      function openExercisePicker(contextBadgeText){
+        const dlg = document.getElementById('exercisePicker');
+        document.getElementById('pickerContextBadge').textContent = contextBadgeText || '—';
+        document.getElementById('pickerSearch').value = '';
+        document.getElementById('pickerCategory').value = '';
+        renderPickerRows();
+        dlg.showModal();
+      }
+
+      function renderPickerRows(){
+        const q = (document.getElementById('pickerSearch')?.value || '').trim().toLowerCase();
+        const cat = (document.getElementById('pickerCategory')?.value || '').trim();
+
+        const list = App.state.exercises
+          .slice()
+          .filter(e => (!cat || e.category === cat) && (!q || (e.name||'').toLowerCase().includes(q)))
+          .sort((a,b) => (a.category||'').localeCompare(b.category||'') || (a.name||'').localeCompare(b.name||''));
+
+        const tb = document.getElementById('pickerTbody');
+        tb.innerHTML = list.map(e => `
+          <tr>
+            <td style="font-weight:800;">${escapeHtml(e.name)}</td>
+            <td class="muted small">${escapeHtml(e.category||'—')}</td>
+            <td class="small muted">${escapeHtml(e.desc||'')}</td>
+            <td class="small muted">${escapeHtml((e.alts||[]).join(', '))}</td>
+            <td style="text-align:right;">
+              <button class="btn primary" data-action="picker-add" data-exid="${e.id}">
+                <i data-lucide="plus" style="width:16px;height:16px;"></i>
+                Dodaj
+              </button>
+            </td>
+          </tr>
+        `).join('');
+        refreshIcons();
+      }
+
+      // ----------------------------
+      // Session start-from-plan dropdown wiring (in session view when no session)
+      // ----------------------------
+      function syncStartPlanDayOptions(){
+        const planSel = document.getElementById('startPlanSelect');
+        const daySel = document.getElementById('startDaySelect');
+        if (!planSel || !daySel) return;
+
+        const p = App.state.plans.find(x => x.id === planSel.value);
+        const days = (p?.days || []);
+        daySel.innerHTML = days.map(d => `<option value="${d.id}">${escapeHtml(d.name)}</option>`).join('');
+      }
+
+      // ----------------------------
+      // Event handling
+      // ----------------------------
+      document.addEventListener('click', (e) => {
+        const btn = e.target.closest('[data-action]');
+        if (!btn) return;
+        const a = btn.getAttribute('data-action');
+
+        // toasts
+        if (a === 'toast-close'){
+          const id = btn.getAttribute('data-id');
+          const el = document.getElementById(id);
+          if (el) el.remove();
+          return;
+        }
+
+        // nav
+        if (a === 'nav'){
+          setRoute(btn.getAttribute('data-route'));
+          return;
+        }
+        if (a === 'go-session'){
+          setRoute('session');
+          return;
+        }
+
+        // rest timer
+        if (a === 'rest-preset'){
+          const sec = safeNum(btn.getAttribute('data-sec'), App.state.settings.defaultRestSec);
+          startRestTimer(sec);
+          return;
+        }
+        if (a === 'rest-skip'){
+          skipRestTimer();
+          toast('Timer pominięty.', 'warn', 2500);
+          return;
+        }
+        if (a === 'rest-custom'){
+          const dlg = document.getElementById('customRestDialog');
+          document.getElementById('customRestSeconds').value = String(App.state.settings.defaultRestSec || 90);
+          document.getElementById('customRestDefault').checked = false;
+          dlg.showModal();
+          return;
+        }
+        if (a === 'custom-rest-apply'){
+          const sec = clamp(round0(safeNum(document.getElementById('customRestSeconds').value, 90)), 5, 3600);
+          const setDef = document.getElementById('customRestDefault').checked;
+          if (setDef){
+            App.state.settings.defaultRestSec = sec;
+            saveStateDebounced();
+            toast(`Ustawiono domyślny odpoczynek: ${sec}s`, 'success', 3000);
+            // rerender session header parts (where default shown)
+            if (App.ui.route === 'session') render();
+          }
+          startRestTimer(sec);
+          return;
+        }
+
+        // session
+        if (a === 'quick-new-workout' || a === 'session-start-empty'){
+          App.state.sessionActive = {
+            id: uid('sess'),
+            name: 'Trening (pusty)',
+            startedAt: Date.now(),
+            fromPlanId: null,
+            fromDayId: null,
+            notes: '',
+            exercises: []
+          };
+          saveStateDebounced();
+          App.ui.route = 'session';
+          render();
+          toast('Nowa sesja uruchomiona.', 'success', 2500);
+          return;
+        }
+        if (a === 'finish-workout'){
+          // confirmation (simple)
+          const ok = confirm('Zakończyć trening i zapisać w historii?');
+          if (ok) finishWorkout();
+          return;
+        }
+        if (a === 'session-discard'){
+          const ok = confirm('Porzucić aktywną sesję? Dane sesji zostaną utracone (historia bez zmian).');
+          if (!ok) return;
+          App.state.sessionActive = null;
+          skipRestTimer();
+          saveStateDebounced();
+          render();
+          toast('Sesja porzucona.', 'warn', 3000);
+          return;
+        }
+        if (a === 'session-add-exercise'){
+          App.ui.picker = { mode:'session', planId:null, dayId:null };
+          openExercisePicker('Dodaj do sesji');
+          return;
+        }
+        if (a === 'exercise-remove'){
+          sessionRemoveExercise(btn.getAttribute('data-sxid'));
+          render();
+          toast('Usunięto ćwiczenie z sesji.', 'warn', 2500);
+          return;
+        }
+        if (a === 'set-add'){
+          sessionAddSet(btn.getAttribute('data-sxid'));
+          render();
+          return;
+        }
+        if (a === 'set-delete'){
+          sessionDeleteSet(btn.getAttribute('data-sxid'), btn.getAttribute('data-setid'));
+          render();
+          toast('Usunięto serię.', 'warn', 2000);
+          return;
+        }
+        if (a === 'set-status'){
+          sessionToggleSetStatus(btn.getAttribute('data-sxid'), btn.getAttribute('data-setid'));
+          // no full render required, but status button template is complex -> rerender current view for correctness
+          render();
+          return;
+        }
+
+        // picker add
+        if (a === 'picker-add'){
+          const exid = btn.getAttribute('data-exid');
+          if (App.ui.picker.mode === 'session'){
+            sessionAddExercise(exid);
+            saveStateDebounced();
+            document.getElementById('exercisePicker').close();
+            render();
+            toast('Dodano ćwiczenie do sesji.', 'success', 2000);
+          } else if (App.ui.picker.mode === 'plan'){
+            planAddExerciseByExerciseId(App.ui.picker.planId, App.ui.picker.dayId, exid);
+            saveStateDebounced();
+            document.getElementById('exercisePicker').close();
+            render();
+            toast('Dodano ćwiczenie do planu.', 'success', 2000);
+          }
+          return;
+        }
+
+        // plans
+        if (a === 'plan-create'){
+          const p = planCreate('Nowy plan');
+          App.ui.planEditorId = p.id;
+          render();
+          toast('Utworzono plan.', 'success', 2500);
+          return;
+        }
+        if (a === 'plan-edit'){
+          App.ui.planEditorId = btn.getAttribute('data-planid');
+          render();
+          return;
+        }
+        if (a === 'plan-back'){
+          App.ui.planEditorId = null;
+          render();
+          return;
+        }
+        if (a === 'plan-duplicate'){
+          planDuplicate(btn.getAttribute('data-planid'));
+          render();
+          return;
+        }
+        if (a === 'plan-archive'){
+          planToggleArchive(btn.getAttribute('data-planid'));
+          return;
+        }
+        if (a === 'start-from-plan'){
+          const planId = btn.getAttribute('data-planid');
+          const dayId = btn.getAttribute('data-dayid');
+          if (sessionIsActive()){
+            const ok = confirm('Masz aktywną sesję. Zastąpić ją sesją z planu?');
+            if (!ok) return;
+          }
+          startSessionFromPlan(planId, dayId);
+          return;
+        }
+        if (a === 'plan-add-day'){
+          planAddDay(btn.getAttribute('data-planid'));
+          return;
+        }
+        if (a === 'plan-day-remove'){
+          const ok = confirm('Usunąć dzień z planu?');
+          if (!ok) return;
+          planRemoveDay(btn.getAttribute('data-planid'), btn.getAttribute('data-dayid'));
+          return;
+        }
+        if (a === 'plan-day-add-exercise'){
+          App.ui.picker = { mode:'plan', planId: btn.getAttribute('data-planid'), dayId: btn.getAttribute('data-dayid') };
+          openExercisePicker('Dodaj do planu');
+          return;
+        }
+        if (a === 'plan-ex-move'){
+          planMoveExercise(btn.getAttribute('data-planid'), btn.getAttribute('data-dayid'), round0(btn.getAttribute('data-index')), round0(btn.getAttribute('data-dir')));
+          return;
+        }
+        if (a === 'plan-ex-remove'){
+          const ok = confirm('Usunąć ćwiczenie z dnia?');
+          if (!ok) return;
+          planRemoveExercise(btn.getAttribute('data-planid'), btn.getAttribute('data-dayid'), btn.getAttribute('data-pxid'));
+          return;
+        }
+
+        // session start from plan (route session no active)
+        if (a === 'session-start-from-plan'){
+          const planSel = document.getElementById('startPlanSelect');
+          const daySel = document.getElementById('startDaySelect');
+          if (!planSel || !daySel) return;
+          startSessionFromPlan(planSel.value, daySel.value);
+          return;
+        }
+
+        // history
+        if (a === 'history-toggle'){
+          const id = btn.getAttribute('data-id');
+          if (App.ui.historyExpanded.has(id)) App.ui.historyExpanded.delete(id);
+          else App.ui.historyExpanded.add(id);
+          render();
+          return;
+        }
+        if (a === 'history-delete'){
+          const id = btn.getAttribute('data-id');
+          const ok = confirm('Usunąć ten trening z historii?');
+          if (!ok) return;
+          App.state.history = App.state.history.filter(w => w.id !== id);
+          saveStateDebounced();
+          render();
+          toast('Usunięto wpis historii.', 'warn', 2500);
+          return;
+        }
+        if (a === 'history-clear'){
+          const ok = confirm('Usunąć CAŁĄ historię treningów?');
+          if (!ok) return;
+          App.state.history = [];
+          saveStateDebounced();
+          App.ui.historyExpanded = new Set();
+          render();
+          toast('Historia wyczyszczona.', 'warn', 3000);
+          return;
+        }
+
+        // calculators
+        if (a === 'calc-1rm'){
+          calc1rmUI();
+          return;
+        }
+        if (a === 'calc-plates'){
+          calcPlatesUI();
+          return;
+        }
+        if (a === 'calc-tdee'){
+          calcTDEEUI();
+          return;
+        }
+
+        // atlas
+        if (a === 'atlas-add-custom'){
+          const name = (document.getElementById('customExName')?.value || '').trim();
+          const category = (document.getElementById('customExCat')?.value || 'Klatka').trim();
+          const primary = (document.getElementById('customExPrimary')?.value || category).trim();
+          const alts = (document.getElementById('customExAlts')?.value || '').split(',').map(x => x.trim()).filter(Boolean);
+          const desc = (document.getElementById('customExDesc')?.value || '').trim();
+
+          if (!name){
+            toast('Podaj nazwę ćwiczenia.', 'warn', 2500);
+            return;
+          }
+          if (App.state.exercises.some(e => (e.name||'').toLowerCase() === name.toLowerCase())){
+            toast('Ćwiczenie o tej nazwie już istnieje.', 'warn', 3500);
+            return;
+          }
+          App.state.exercises.push({ id: uid('ex'), source:'custom', name, category, primary, alts, desc });
+          saveStateDebounced();
+
+          // clear
+          document.getElementById('customExName').value = '';
+          document.getElementById('customExAlts').value = '';
+          document.getElementById('customExDesc').value = '';
+          toast('Dodano własne ćwiczenie.', 'success', 3000);
+          render();
+          return;
+        }
+
+        if (a === 'atlas-delete'){
+          const id = btn.getAttribute('data-exid');
+          const ex = App.state.exercises.find(e => e.id === id);
+          if (!ex || ex.source !== 'custom'){
+            toast('Można usuwać tylko ćwiczenia custom.', 'warn', 3500);
+            return;
+          }
+          const ok = confirm(`Usunąć własne ćwiczenie: ${ex.name}?`);
+          if (!ok) return;
+          App.state.exercises = App.state.exercises.filter(e => e.id !== id);
+
+          // Also clean from plans + active session
+          for (const p of App.state.plans){
+            for (const d of p.days){
+              d.exercises = d.exercises.filter(px => (px.exerciseName||'') !== ex.name);
+            }
+          }
+          const sess = App.state.sessionActive;
+          if (sess){
+            sess.exercises = sess.exercises.filter(sx => sx.exerciseId !== id);
+          }
+
+          saveStateDebounced();
+          toast('Usunięto ćwiczenie custom.', 'success', 3000);
+          render();
+          return;
+        }
+
+        if (a === 'atlas-quick-add-session'){
+          if (!App.state.sessionActive){
+            const ok = confirm('Brak aktywnej sesji. Utworzyć nowy trening i dodać ćwiczenie?');
+            if (!ok) return;
+            App.state.sessionActive = {
+              id: uid('sess'),
+              name: 'Trening (pusty)',
+              startedAt: Date.now(),
+              fromPlanId: null,
+              fromDayId: null,
+              notes: '',
+              exercises: []
+            };
+          }
+          sessionAddExercise(btn.getAttribute('data-exid'));
+          saveStateDebounced();
+          toast('Dodano do sesji.', 'success', 2000);
+          App.ui.route = 'session';
+          render();
+          return;
+        }
+
+        // backup
+        if (a === 'export-json'){
+          exportJSON();
+          return;
+        }
+        if (a === 'open-import'){
+          document.getElementById('importDialog').showModal();
+          return;
+        }
+        if (a === 'import-json'){
+          const file = document.getElementById('importFile')?.files?.[0];
+          if (!file){
+            toast('Wybierz plik JSON.', 'warn', 2500);
+            return;
+          }
+          importJSON(file);
+          return;
+        }
+        if (a === 'hard-reset'){
+          const ok = confirm('Na pewno zresetować IronForge PRO? Utracisz dane (chyba że masz eksport).');
+          if (!ok) return;
+          localStorage.removeItem(STORAGE_KEY);
+          App.state = deepClone(DEFAULT_STATE);
+          App.ui.route = 'session';
+          App.ui.planEditorId = null;
+          App.ui.historyExpanded = new Set();
+          skipRestTimer();
+          render();
+          toast('Reset zakończony.', 'success', 3000);
+          return;
+        }
+      });
+
+      document.addEventListener('input', (e) => {
+        const el = e.target.closest('[data-action]');
+        if (!el) return;
+        const a = el.getAttribute('data-action');
+
+        // session fields
+        if (a === 'session-name'){
+          if (!App.state.sessionActive) return;
+          App.state.sessionActive.name = String(el.value || '');
+          saveStateDebounced();
+          renderHeader();
+          return;
+        }
+        if (a === 'session-notes'){
+          if (!App.state.sessionActive) return;
+          App.state.sessionActive.notes = String(el.value || '');
+          saveStateDebounced();
+          return;
+        }
+        if (a === 'exercise-field'){
+          sessionUpdateExerciseField(el.getAttribute('data-sxid'), el.getAttribute('data-field'), el.value);
+          return;
+        }
+        if (a === 'set-field'){
+          const sxId = el.getAttribute('data-sxid');
+          const setId = el.getAttribute('data-setid');
+          const field = el.getAttribute('data-field');
+          sessionUpdateSetField(sxId, setId, field, el.value);
+          updateSetRowComputed(sxId, setId);
+          return;
+        }
+
+        // plans editor fields
+        if (a === 'plan-field'){
+          planUpdateField(el.getAttribute('data-planid'), el.getAttribute('data-field'), el.value);
+          renderHeader();
+          return;
+        }
+        if (a === 'plan-day-field'){
+          planUpdateDayField(el.getAttribute('data-planid'), el.getAttribute('data-dayid'), el.getAttribute('data-field'), el.value);
+          return;
+        }
+        if (a === 'plan-ex-field'){
+          planUpdateExerciseField(el.getAttribute('data-planid'), el.getAttribute('data-dayid'), el.getAttribute('data-pxid'), el.getAttribute('data-field'), el.value);
+          return;
+        }
+
+        // picker filters
+        if (e.target.id === 'pickerSearch' || e.target.id === 'pickerCategory'){
+          renderPickerRows();
+          return;
+        }
+
+        // session start plan dropdown
+        if (e.target.id === 'startPlanSelect'){
+          syncStartPlanDayOptions();
+          return;
+        }
+
+        // atlas filters
+        if (e.target.id === 'atlasSearch' || e.target.id === 'atlasCat'){
+          atlasApplyFilters();
+          return;
+        }
+      });
+
+      // ----------------------------
+      // Init
+      // ----------------------------
+      function boot(){
+        ensureTick();
+
+        // initial render
+        render();
+
+        // session start from plan dropdown init (when no session)
+        setTimeout(() => {
+          syncStartPlanDayOptions();
+        }, 0);
+
+        // calculators initial
+        setTimeout(() => {
+          if (document.getElementById('calc1rmW')) calc1rmUI();
+          if (document.getElementById('platesTarget')) calcPlatesUI();
+          if (document.getElementById('tdeeSex')) calcTDEEUI();
+        }, 0);
+
+        // keep storage indicator OK
+        setStorageIndicator('OK', 'cyan');
+
+        // show small hint once
+        try{
+          const key = 'ironforgepro.hint.v1';
+          if (!localStorage.getItem(key)){
+            localStorage.setItem(key, '1');
+            toast('Tip: Kliknij "Zrobione" przy serii — timer odpoczynku startuje automatycznie.', 'info', 7000);
+          }
+        }catch(_){}
+
+        refreshIcons();
+      }
+
+      boot();
+
+    })();
+  </script>
+<script>
+<script>
+  if ("serviceWorker" in navigator) {
+    window.addEventListener("load", () => {
+      navigator.serviceWorker.register("./sw.js");
+    });
+  }
+</script>
+</body>
+</html>
+```

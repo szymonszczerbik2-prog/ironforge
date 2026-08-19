@@ -1,0 +1,9 @@
+{
+  "name": "IronForge PRO",
+  "short_name": "IronForge",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#020617",
+  "theme_color": "#22d3ee"
+}
