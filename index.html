@@ -1,17 +1,18 @@
-```html
 <!doctype html>
 <html lang="pl">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>IronForge PRO — Offline Strength Tracker</title>
-<link rel="manifest" href="./manifest.json">
-<meta name="theme-color" content="#020617">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+
+  <!-- PWA meta (optional but recommended) -->
+  <link rel="manifest" href="./manifest.json">
+  <meta name="theme-color" content="#020617">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+
   <!-- Tailwind CSS v4 (Play CDN / Browser build) -->
   <script>
-    // Quiet Tailwind browser build warnings (if any)
     window.__TAILWIND_BROWSER_DISABLE_WARNINGS__ = true;
   </script>
   <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
@@ -19,15 +20,15 @@
   <!-- Lucide Icons -->
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
 
-  <!-- Offline-first fallback CSS (app stays usable/styled without CDN; Tailwind enhances when available) -->
+  <!-- Offline-first fallback CSS -->
   <style>
     :root{
-      --bg:#020617;           /* slate-950 */
-      --panel: rgba(15, 23, 42, .55); /* slate-900-ish */
+      --bg:#020617;
+      --panel: rgba(15, 23, 42, .55);
       --panel2: rgba(2, 6, 23, .35);
       --border: rgba(148, 163, 184, .18);
-      --text:#e2e8f0;         /* slate-200 */
-      --muted:#94a3b8;        /* slate-400 */
+      --text:#e2e8f0;
+      --muted:#94a3b8;
       --cyan:#22d3ee;
       --purple:#a855f7;
       --emerald:#34d399;
@@ -65,6 +66,7 @@
       border-bottom: 1px solid var(--border);
       background: linear-gradient(180deg, rgba(2,6,23,.35), rgba(2,6,23,.18));
       backdrop-filter: blur(14px);
+      gap: 12px;
     }
     .content{ flex:1; overflow:auto; padding: 14px; }
     .panel{
@@ -90,9 +92,11 @@
       transition: transform .05s ease, background .15s ease, border-color .15s ease, box-shadow .15s ease;
       display:inline-flex; align-items:center; gap: 8px;
       user-select: none;
+      -webkit-tap-highlight-color: transparent;
     }
     .btn:hover{ background: rgba(15,23,42,.55); border-color: rgba(148,163,184,.28); }
     .btn:active{ transform: translateY(1px); }
+    .btn:disabled{ opacity:.45; cursor:not-allowed; transform:none; }
     .btn.primary{
       border-color: rgba(34,211,238,.35);
       background: linear-gradient(180deg, rgba(34,211,238,.14), rgba(168,85,247,.10));
@@ -106,7 +110,7 @@
       border-color: rgba(52,211,153,.35);
       background: linear-gradient(180deg, rgba(52,211,153,.14), rgba(15,23,42,.25));
     }
-    .btn.ghost{ background: transparent; }
+    .btn.ghost{ background: transparent; border: none; }
     .pill{
       padding: 6px 10px;
       border-radius: 999px;
@@ -186,7 +190,7 @@
     .toast{
       position: fixed; right: 14px; bottom: 14px;
       width: min(460px, calc(100vw - 28px));
-      z-index: 50;
+      z-index: 70;
       display:flex; flex-direction:column; gap: 10px;
       pointer-events: none;
     }
@@ -212,7 +216,7 @@
     .bar{
       width: 100%;
       min-width: 22px;
-      border-radius: 10px 10px 10px 10px;
+      border-radius: 10px;
       background: linear-gradient(180deg, rgba(34,211,238,.75), rgba(168,85,247,.45));
       box-shadow: 0 0 0 1px rgba(34,211,238,.12);
       position: relative;
@@ -239,21 +243,142 @@
     }
     .hide { display:none !important; }
 
-    /* Responsive: collapse sidebar on small */
+    /* Mobile UX helpers */
+    .mobile-only{ display:none !important; }
+    .desktop-only{ display:block !important; }
+
+    #mobileOverlay{
+      position: fixed;
+      inset: 0;
+      z-index: 35;
+      background: rgba(0,0,0,.58);
+      backdrop-filter: blur(6px);
+      display: none;
+    }
+    #mobileOverlay.show{ display:block; }
+
+    #mobileTabbar{
+      position: fixed;
+      left: 0; right: 0; bottom: 0;
+      z-index: 30;
+      display: none;
+      gap: 8px;
+      justify-content: space-around;
+      padding: 10px 10px calc(10px + env(safe-area-inset-bottom));
+      border-top: 1px solid rgba(148,163,184,.18);
+      background: rgba(2,6,23,.72);
+      backdrop-filter: blur(16px);
+    }
+    .tabbtn{
+      flex: 1;
+      min-width: 0;
+      cursor: pointer;
+      border: 1px solid rgba(148,163,184,.18);
+      background: rgba(15,23,42,.35);
+      color: var(--text);
+      border-radius: 14px;
+      padding: 10px 10px;
+      display:flex;
+      flex-direction: column;
+      align-items:center;
+      justify-content:center;
+      gap: 6px;
+      user-select: none;
+    }
+    .tabbtn .t{ font-size: 11px; color: var(--muted); }
+    .tabbtn.active{
+      border-color: rgba(34,211,238,.35);
+      background: linear-gradient(180deg, rgba(34,211,238,.12), rgba(168,85,247,.07));
+      box-shadow: 0 0 0 1px rgba(34,211,238,.08);
+    }
+
+    .btn.sm{
+      padding: 8px 10px;
+      border-radius: 12px;
+      font-size: 13px;
+    }
+    .stepper{ display:flex; gap:8px; align-items:center; }
+    .stepper .input{ text-align:center; }
+
+    #sessionActionBar{
+      position: fixed;
+      left: 10px; right: 10px;
+      z-index: 34;
+      display: none;
+      gap: 10px;
+      padding: 10px;
+      border-radius: 18px;
+      border: 1px solid rgba(148,163,184,.18);
+      background: rgba(2,6,23,.72);
+      backdrop-filter: blur(16px);
+      box-shadow: var(--shadow), 0 0 0 1px rgba(34,211,238,.08);
+    }
+    #sessionActionBar .info{
+      min-width: 0;
+      display:flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    #sessionActionBar .title{
+      font-weight: 800;
+      overflow:hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      max-width: 44vw;
+    }
+    #sessionActionBar .sub{
+      font-size: 12px;
+      color: var(--muted);
+    }
+
     @media (max-width: 980px){
-      body{ overflow:auto; }
-      .app{ flex-direction: column; overflow:auto; height:auto; min-height: 100%; }
-      .sidebar{ width:100%; min-width: 0; border-right: none; border-bottom: 1px solid var(--border); }
-      .main{ min-height: calc(100vh - 150px); }
+      body{ height: 100dvh; overflow: hidden; }
+      .app{ height: 100dvh; }
+
+      .sidebar{
+        position: fixed;
+        top: 0; left: 0; bottom: 0;
+        width: min(88vw, 340px);
+        min-width: 0;
+        z-index: 40;
+        transform: translateX(-110%);
+        transition: transform .18s ease;
+        border-right: 1px solid rgba(148,163,184,.18);
+      }
+      .sidebar.open{ transform: translateX(0); }
+
+      .main{ width: 100%; }
+
+      .topbar{ flex-direction: column; align-items: stretch; }
+      .topbar > *{ width: 100%; }
+
+      .content{ padding-bottom: 98px; }
+      body[data-route="session"] .content{ padding-bottom: 190px; }
+
+      .input, .select, .textarea{ font-size: 16px; } /* iOS zoom fix */
+
+      dialog{
+        width: calc(100vw - 14px);
+        height: 92dvh;
+        max-height: 92dvh;
+      }
+
+      .mobile-only{ display:block !important; }
+      .desktop-only{ display:none !important; }
+
+      #mobileTabbar{ display:flex; }
+      #sessionActionBar{ bottom: calc(78px + env(safe-area-inset-bottom)); }
+
       .grid4{ grid-template-columns: repeat(2, minmax(0,1fr)); }
       .grid3{ grid-template-columns: repeat(2, minmax(0,1fr)); }
+      .grid2{ grid-template-columns: repeat(1, minmax(0,1fr)); }
     }
   </style>
 </head>
 
-<body class="bg-slate-950 text-slate-100">
+<body class="bg-slate-950 text-slate-100" data-route="session">
   <div class="app">
-    <aside class="sidebar">
+    <aside class="sidebar" id="sidebar">
       <div class="panel soft" style="padding:12px;">
         <div class="row" style="justify-content: space-between;">
           <div class="row" style="gap:12px; align-items:center;">
@@ -275,7 +400,6 @@
       </div>
 
       <div class="hr"></div>
-
       <nav class="stack" style="gap:8px;" id="nav"></nav>
 
       <div class="hr"></div>
@@ -333,7 +457,7 @@
         </div>
 
         <div class="row" style="justify-content:flex-end;">
-          <div class="panel soft" style="padding:8px 10px; border-radius: 16px; border:1px solid rgba(148,163,184,.14); background: rgba(2,6,23,.22);">
+          <div class="panel soft" style="padding:8px 10px; border-radius: 16px; border:1px solid rgba(148,163,184,.14); background: rgba(2,6,23,.22); width: 100%;">
             <div class="row" style="gap:10px;">
               <div class="row" style="gap:10px;">
                 <div class="progressRing" id="restRing" style="--p:0%;">
@@ -376,7 +500,7 @@
             </div>
           </div>
 
-          <button class="btn primary" data-action="quick-new-workout" title="Nowy trening (pusty)">
+          <button class="btn primary desktop-only" data-action="quick-new-workout" title="Nowy trening (pusty)">
             <i data-lucide="plus" style="width:16px;height:16px;"></i>
             Nowy
           </button>
@@ -387,7 +511,12 @@
     </main>
   </div>
 
-  <!-- Exercise picker dialog (used by Session + Plan editor) -->
+  <!-- Mobile overlay + bottom tabbar + sticky bar -->
+  <div id="mobileOverlay" data-action="close-sidebar" aria-hidden="true"></div>
+  <div id="mobileTabbar" aria-label="Dolna nawigacja"></div>
+  <div id="sessionActionBar"></div>
+
+  <!-- Exercise picker -->
   <dialog id="exercisePicker">
     <form method="dialog" style="padding:14px;">
       <div class="row" style="justify-content: space-between;">
@@ -514,7 +643,6 @@
     </form>
   </dialog>
 
-  <!-- Toasts -->
   <div class="toast" id="toast"></div>
 
   <script>
@@ -575,6 +703,12 @@
       };
       const deepClone = (x) => JSON.parse(JSON.stringify(x));
 
+      function escapeHtml(s){
+        return String(s).replace(/[&<>"']/g, (c) => ({
+          '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'
+        }[c]));
+      }
+
       function toast(msg, type='info', timeout=3600){
         const host = document.getElementById('toast');
         const id = uid('toast');
@@ -602,21 +736,12 @@
         host.appendChild(el);
         refreshIcons();
         if (timeout > 0){
-          setTimeout(() => {
-            const cur = document.getElementById(id);
-            if (cur) cur.remove();
-          }, timeout);
+          setTimeout(() => document.getElementById(id)?.remove(), timeout);
         }
       }
 
-      function escapeHtml(s){
-        return String(s).replace(/[&<>"']/g, (c) => ({
-          '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'
-        }[c]));
-      }
-
       // ----------------------------
-      // Fallback icons (if Lucide fails offline)
+      // Icons (Lucide + fallback minimal)
       // ----------------------------
       const fallbackIcons = {
         'anvil': `<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 15h16"/><path d="M7 15l2-6h6l2 6"/><path d="M9 9V7a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2"/></svg>`,
@@ -630,14 +755,12 @@
             return;
           }
         }catch(_){}
-        // fallback: replace <i data-lucide="..."> with inline svg when possible
         document.querySelectorAll('i[data-lucide]').forEach(i => {
           const name = i.getAttribute('data-lucide');
           if (i.__fallbackApplied) return;
           if (fallbackIcons[name]){
             i.outerHTML = `<span style="display:inline-flex;align-items:center;justify-content:center;color:inherit;">${fallbackIcons[name]}</span>`;
           } else {
-            // leave as-is (empty)
             i.__fallbackApplied = true;
           }
         });
@@ -725,17 +848,14 @@
         const s = raw && typeof raw === 'object' ? raw : {};
         const out = deepClone(DEFAULT_STATE);
 
-        // merge shallow
         out.meta = { ...out.meta, ...(s.meta||{}) };
         out.settings = { ...out.settings, ...(s.settings||{}) };
 
-        // arrays
         if (Array.isArray(s.exercises) && s.exercises.length) out.exercises = s.exercises;
         if (Array.isArray(s.plans)) out.plans = s.plans;
         if (Array.isArray(s.history)) out.history = s.history;
         if (s.sessionActive && typeof s.sessionActive === 'object') out.sessionActive = s.sessionActive;
 
-        // ensure IDs
         out.exercises = out.exercises.map(e => ({ id: e.id || uid('ex'), source: e.source || 'custom', ...e }));
         out.plans = out.plans.map(p => ({
           id: p.id || uid('plan'),
@@ -800,7 +920,7 @@
       }
 
       // ----------------------------
-      // App controller
+      // App
       // ----------------------------
       const App = {
         state: loadState(),
@@ -811,12 +931,104 @@
           planEditorId: null,
           picker: { mode: null, planId: null, dayId: null, exerciseId: null },
           rest: { running: false, endsAt: null, startedAt: null, durationSec: 0, fromSet: null },
-          tickHandle: null
+          tickHandle: null,
+
+          // Mobile: selected exercise for sticky bar
+          activeSxId: null,
         },
       };
 
       // ----------------------------
-      // Domain logic
+      // Mobile: sidebar + tabbar + sticky session bar
+      // ----------------------------
+      function openSidebar(){
+        const sb = document.getElementById('sidebar');
+        const ov = document.getElementById('mobileOverlay');
+        if (!sb || !ov) return;
+        sb.classList.add('open');
+        ov.classList.add('show');
+      }
+      function closeSidebar(){
+        const sb = document.getElementById('sidebar');
+        const ov = document.getElementById('mobileOverlay');
+        if (!sb || !ov) return;
+        sb.classList.remove('open');
+        ov.classList.remove('show');
+      }
+      function toggleSidebar(){
+        const sb = document.getElementById('sidebar');
+        if (!sb) return;
+        if (sb.classList.contains('open')) closeSidebar();
+        else openSidebar();
+      }
+
+      function renderMobileTabbar(){
+        const host = document.getElementById('mobileTabbar');
+        if (!host) return;
+
+        const mk = (route, icon, label) => `
+          <button class="tabbtn ${App.ui.route===route?'active':''}" data-action="nav" data-route="${route}">
+            <i data-lucide="${icon}" style="width:18px;height:18px;"></i>
+            <div class="t">${label}</div>
+          </button>
+        `;
+
+        host.innerHTML = `
+          ${mk('session','dumbbell','Trening')}
+          ${mk('plans','layers','Plany')}
+          ${mk('progress','bar-chart-3','Progres')}
+          ${mk('history','calendar','Historia')}
+          <button class="tabbtn" data-action="toggle-sidebar" title="Menu">
+            <i data-lucide="menu" style="width:18px;height:18px;"></i>
+            <div class="t">Menu</div>
+          </button>
+        `;
+        refreshIcons();
+      }
+
+      function renderSessionActionBar(){
+        const host = document.getElementById('sessionActionBar');
+        if (!host) return;
+
+        const isMobile = window.matchMedia && window.matchMedia('(max-width: 980px)').matches;
+        const sess = App.state.sessionActive;
+        const show = isMobile && App.ui.route === 'session' && !!sess;
+
+        host.style.display = show ? 'flex' : 'none';
+        if (!show) return;
+
+        const sx = sess.exercises.find(x => x.id === App.ui.activeSxId) || null;
+        const title = sx ? sx.name : 'Wybierz ćwiczenie';
+        const sub = sx ? `Dodaj serię do: ${sx.name}` : 'Dotknij nazwy ćwiczenia, aby je wybrać';
+
+        host.innerHTML = `
+          <div class="info">
+            <div class="title">${escapeHtml(title)}</div>
+            <div class="sub">${escapeHtml(sub)}</div>
+          </div>
+
+          <div class="row" style="gap:8px; margin-left:auto; flex-wrap:nowrap;">
+            <button class="btn sm" data-action="session-add-exercise">
+              <i data-lucide="plus" style="width:16px;height:16px;"></i>
+              Ćw.
+            </button>
+
+            <button class="btn sm primary" data-action="session-add-set-active" ${sx ? '' : 'disabled'}>
+              <i data-lucide="plus" style="width:16px;height:16px;"></i>
+              Seria
+            </button>
+
+            <button class="btn sm good" data-action="finish-workout">
+              <i data-lucide="flag" style="width:16px;height:16px;"></i>
+              Koniec
+            </button>
+          </div>
+        `;
+        refreshIcons();
+      }
+
+      // ----------------------------
+      // Domain: Session
       // ----------------------------
       const SetType = {
         work: 'Robocza',
@@ -877,6 +1089,9 @@
           ]
         };
         sess.exercises.push(item);
+
+        if (!App.ui.activeSxId) App.ui.activeSxId = item.id;
+
         saveStateDebounced();
       }
 
@@ -884,6 +1099,9 @@
         const sess = App.state.sessionActive;
         if (!sess) return;
         sess.exercises = sess.exercises.filter(x => x.id !== sxId);
+        if (App.ui.activeSxId === sxId){
+          App.ui.activeSxId = sess.exercises[0]?.id || null;
+        }
         saveStateDebounced();
       }
 
@@ -998,7 +1216,6 @@
         set.status = next;
         set.doneAt = next === 'done' ? Date.now() : null;
 
-        // auto start rest on done
         if (next === 'done'){
           startRestTimer(App.state.settings.defaultRestSec, { sxId, setId });
         }
@@ -1026,7 +1243,7 @@
         const durationSec = Math.max(0, Math.floor((endedAt - startedAt) / 1000));
         const stats = computeSessionStats(sess);
 
-        const workout = {
+        return {
           id: uid('w'),
           name: sess.name || 'Trening',
           startedAt, endedAt, durationSec,
@@ -1037,7 +1254,6 @@
             sets: ex.sets.map(s => ({ ...s }))
           }))
         };
-        return workout;
       }
 
       function finishWorkout(){
@@ -1050,6 +1266,7 @@
         const hasAny = stats.doneSets > 0 || stats.totalSets > 0 || sess.exercises.length > 0;
         if (!hasAny){
           App.state.sessionActive = null;
+          App.ui.activeSxId = null;
           skipRestTimer();
           saveStateDebounced();
           render();
@@ -1060,6 +1277,7 @@
         const w = computeWorkoutFromSession(sess);
         App.state.history.unshift(w);
         App.state.sessionActive = null;
+        App.ui.activeSxId = null;
         skipRestTimer();
         saveStateDebounced();
         render();
@@ -1241,14 +1459,16 @@
         };
 
         App.state.sessionActive = sess;
+        App.ui.activeSxId = sess.exercises[0]?.id || null;
         saveStateDebounced();
         App.ui.route = 'session';
+        document.body.setAttribute('data-route', 'session');
         render();
         toast('Rozpoczęto trening z planu.', 'success', 3500);
       }
 
       // ----------------------------
-      // Progress / PR
+      // Progress / PR / Achievements
       // ----------------------------
       function getDoneSetsFromWorkout(w){
         const out = [];
@@ -1269,16 +1489,13 @@
         }
         return out;
       }
-
       function epley1RM(weight, reps){
         weight = safeNum(weight,0);
         reps = safeNum(reps,0);
         if (weight <= 0 || reps <= 0) return 0;
         return weight * (1 + reps/30);
       }
-
       function computePRs(){
-        // per exerciseName: maxWeight, maxRepsAtAnyWeight, maxSetVolume, maxEst1RM
         const map = new Map();
         for (const w of App.state.history){
           for (const s of getDoneSetsFromWorkout(w)){
@@ -1296,13 +1513,11 @@
         }
         return Array.from(map.values()).sort((a,b) => b.maxEst1RM - a.maxEst1RM);
       }
-
       function computeAchievements(){
         const allDoneSets = App.state.history.flatMap(getDoneSetsFromWorkout);
         const any100 = allDoneSets.some(s => s.weight >= 100);
         const lifetimeTonnage = App.state.history.reduce((acc,w) => acc + safeNum(w.tonnage,0), 0);
 
-        // 10 trainings in a row (no gap > 2 days between consecutive workouts, last 10)
         const dates = App.state.history
           .map(w => startOfDay(new Date(w.endedAt || w.startedAt)).getTime())
           .sort((a,b) => b-a);
@@ -1318,7 +1533,6 @@
           streak10 = ok;
         }
 
-        // weekly 10k tonnage
         const weekTotals = new Map();
         for (const w of App.state.history){
           const k = weekKey(w.endedAt || w.startedAt);
@@ -1378,7 +1592,7 @@
         const mapToGroup = (cat) => {
           if (cat === 'Biceps' || cat === 'Triceps') return 'Ramiona';
           if (groups.includes(cat)) return cat;
-          if (cat === 'Brzuch') return 'Ramiona'; // compact view
+          if (cat === 'Brzuch') return 'Ramiona';
           return 'Ramiona';
         };
 
@@ -1428,7 +1642,6 @@
           toast('Nieprawidłowy JSON.', 'danger', 5000);
           return;
         }
-        // minimal validation
         if (!obj || typeof obj !== 'object' || !Array.isArray(obj.exercises) || !Array.isArray(obj.plans) || !Array.isArray(obj.history)){
           toast('To nie wygląda na backup IronForge PRO.', 'danger', 6000);
           return;
@@ -1441,6 +1654,8 @@
           App.ui.planEditorId = null;
           App.ui.historyExpanded = new Set();
           skipRestTimer();
+          App.ui.activeSxId = App.state.sessionActive?.exercises?.[0]?.id || null;
+          document.body.setAttribute('data-route', App.ui.route);
           render();
         }catch(e){
           toast('Nie udało się zapisać importu do localStorage.', 'danger', 6000);
@@ -1464,6 +1679,8 @@
       function setRoute(route){
         App.ui.route = route;
         App.ui.planEditorId = null;
+        document.body.setAttribute('data-route', route);
+        closeSidebar();
         render();
       }
 
@@ -1489,7 +1706,6 @@
         document.getElementById('nowBadge').textContent = fmtDateTime(Date.now());
         document.getElementById('dataVersion').textContent = 'v' + (App.state.meta?.version || 1);
 
-        // active session mini
         const mini = document.getElementById('activeSessionMini');
         if (App.state.sessionActive){
           const stats = computeSessionStats(App.state.sessionActive);
@@ -1501,36 +1717,227 @@
 
       function render(){
         renderNav();
+        renderMobileTabbar();
         renderHeader();
         renderView();
+        renderSessionActionBar();
         updateRestUI();
         updateWorkoutStopwatchUI();
         refreshIcons();
       }
 
-      function renderView(){
-        const host = document.getElementById('view');
-        const route = App.ui.route;
-
-        if (route === 'session') host.innerHTML = renderSessionView();
-        else if (route === 'plans') host.innerHTML = renderPlansView();
-        else if (route === 'progress') host.innerHTML = renderProgressView();
-        else if (route === 'prs') host.innerHTML = renderPRsView();
-        else if (route === 'history') host.innerHTML = renderHistoryView();
-        else if (route === 'calculators') host.innerHTML = renderCalculatorsView();
-        else if (route === 'atlas') host.innerHTML = renderAtlasView();
-        else if (route === 'backup') host.innerHTML = renderBackupView();
-        else host.innerHTML = `<div class="panel" style="padding:14px;">Nieznany widok.</div>`;
-
-        // post-render dynamic bits
-        if (route === 'progress') renderProgressCharts();
-        if (route === 'session') updateSessionComputedUI();
-        refreshIcons();
+      // ----------------------------
+      // Session UI (desktop table + mobile cards)
+      // ----------------------------
+      function statusBadge(status){
+        if (status === 'done') return `<span class="badge emerald"><i data-lucide="check-circle" style="width:14px;height:14px;"></i> Zrobione</span>`;
+        if (status === 'skipped') return `<span class="badge rose"><i data-lucide="x-circle" style="width:14px;height:14px;"></i> Ominięte</span>`;
+        return `<span class="badge"><i data-lucide="circle" style="width:14px;height:14px;"></i> Pending</span>`;
       }
 
-      // ----------------------------
-      // Session view
-      // ----------------------------
+      function renderSetRow(sxId, s){
+        const vol = (safeNum(s.weight,0) * safeNum(s.reps,0));
+        return `
+          <tr>
+            <td>
+              <select class="select" style="padding:8px 10px;" data-action="set-field" data-field="type" data-sxid="${sxId}" data-setid="${s.id}">
+                <option value="work" ${s.type==='work'?'selected':''}>Robocza</option>
+                <option value="warmup" ${s.type==='warmup'?'selected':''}>Rozgrzewkowa</option>
+                <option value="dropset" ${s.type==='dropset'?'selected':''}>Dropset</option>
+                <option value="failure" ${s.type==='failure'?'selected':''}>Do upadku</option>
+              </select>
+            </td>
+            <td>
+              <input class="input mono" style="padding:8px 10px;" type="number" min="0" step="0.5"
+                value="${escapeHtml(s.weight ?? 0)}"
+                data-action="set-field" data-field="weight" data-sxid="${sxId}" data-setid="${s.id}" />
+            </td>
+            <td>
+              <input class="input mono" style="padding:8px 10px;" type="number" min="0" step="1"
+                value="${escapeHtml(s.reps ?? 0)}"
+                data-action="set-field" data-field="reps" data-sxid="${sxId}" data-setid="${s.id}" />
+            </td>
+            <td>
+              <input class="input mono" style="padding:8px 10px;" type="number" min="0" max="10" step="0.5"
+                value="${escapeHtml(s.rpe ?? 8)}"
+                data-action="set-field" data-field="rpe" data-sxid="${sxId}" data-setid="${s.id}" />
+            </td>
+            <td>
+              <span class="mono" data-role="set-tonnage" data-sxid="${sxId}" data-setid="${s.id}">${round0(vol)}</span>
+              <span class="muted small">kg</span>
+            </td>
+            <td>
+              <div class="row" style="justify-content: space-between;">
+                <button class="btn ${s.status==='done'?'good':s.status==='skipped'?'danger':''}"
+                  data-action="set-status" data-sxid="${sxId}" data-setid="${s.id}">
+                  ${statusBadge(s.status)}
+                </button>
+                <button class="btn" data-action="rest-preset" data-sec="${App.state.settings.defaultRestSec}" title="Start domyślnego odpoczynku">
+                  <i data-lucide="play" style="width:16px;height:16px;"></i>
+                </button>
+              </div>
+            </td>
+            <td style="text-align:right;">
+              <button class="btn danger" data-action="set-delete" data-sxid="${sxId}" data-setid="${s.id}" title="Usuń serię">
+                <i data-lucide="trash" style="width:16px;height:16px;"></i>
+              </button>
+            </td>
+          </tr>
+        `;
+      }
+
+      function renderSetCard(sxId, s, idx){
+        const vol = (safeNum(s.weight,0) * safeNum(s.reps,0));
+        return `
+          <div class="panel soft" style="padding:12px; border-radius:16px;">
+            <div class="row" style="justify-content: space-between; align-items:center;">
+              <div class="badge cyan mono">Seria #${idx+1}</div>
+              <button class="btn danger" data-action="set-delete" data-sxid="${sxId}" data-setid="${s.id}">
+                <i data-lucide="trash" style="width:16px;height:16px;"></i>
+              </button>
+            </div>
+
+            <div class="hr"></div>
+
+            <div class="grid2">
+              <div class="stack">
+                <label class="small muted">Typ</label>
+                <select class="select" data-action="set-field" data-field="type" data-sxid="${sxId}" data-setid="${s.id}">
+                  <option value="work" ${s.type==='work'?'selected':''}>Robocza</option>
+                  <option value="warmup" ${s.type==='warmup'?'selected':''}>Rozgrzewkowa</option>
+                  <option value="dropset" ${s.type==='dropset'?'selected':''}>Dropset</option>
+                  <option value="failure" ${s.type==='failure'?'selected':''}>Do upadku</option>
+                </select>
+              </div>
+
+              <div class="stack">
+                <label class="small muted">Status</label>
+                <button class="btn ${s.status==='done'?'good':s.status==='skipped'?'danger':''}"
+                  data-action="set-status" data-sxid="${sxId}" data-setid="${s.id}" style="justify-content:center;">
+                  ${statusBadge(s.status)}
+                </button>
+              </div>
+            </div>
+
+            <div class="stack" style="gap:10px; margin-top:10px;">
+              <div class="stack">
+                <label class="small muted">Ciężar (kg)</label>
+                <div class="stepper">
+                  <button class="btn sm" data-action="step" data-sxid="${sxId}" data-setid="${s.id}" data-field="weight" data-delta="-2.5">−</button>
+                  <input class="input mono" inputmode="decimal" type="number" min="0" step="0.5"
+                    value="${escapeHtml(s.weight ?? 0)}"
+                    data-action="set-field" data-field="weight" data-sxid="${sxId}" data-setid="${s.id}" />
+                  <button class="btn sm" data-action="step" data-sxid="${sxId}" data-setid="${s.id}" data-field="weight" data-delta="2.5">+</button>
+                </div>
+              </div>
+
+              <div class="stack">
+                <label class="small muted">Powt.</label>
+                <div class="stepper">
+                  <button class="btn sm" data-action="step" data-sxid="${sxId}" data-setid="${s.id}" data-field="reps" data-delta="-1">−</button>
+                  <input class="input mono" inputmode="numeric" type="number" min="0" step="1"
+                    value="${escapeHtml(s.reps ?? 0)}"
+                    data-action="set-field" data-field="reps" data-sxid="${sxId}" data-setid="${s.id}" />
+                  <button class="btn sm" data-action="step" data-sxid="${sxId}" data-setid="${s.id}" data-field="reps" data-delta="1">+</button>
+                </div>
+              </div>
+
+              <div class="stack">
+                <label class="small muted">RPE</label>
+                <div class="stepper">
+                  <button class="btn sm" data-action="step" data-sxid="${sxId}" data-setid="${s.id}" data-field="rpe" data-delta="-0.5">−</button>
+                  <input class="input mono" inputmode="decimal" type="number" min="0" max="10" step="0.5"
+                    value="${escapeHtml(s.rpe ?? 8)}"
+                    data-action="set-field" data-field="rpe" data-sxid="${sxId}" data-setid="${s.id}" />
+                  <button class="btn sm" data-action="step" data-sxid="${sxId}" data-setid="${s.id}" data-field="rpe" data-delta="0.5">+</button>
+                </div>
+              </div>
+            </div>
+
+            <div class="row" style="justify-content: space-between; margin-top:10px;">
+              <div class="badge emerald">
+                <i data-lucide="sigma" style="width:14px;height:14px;"></i>
+                Objętość: <span class="mono" data-role="set-tonnage" data-sxid="${sxId}" data-setid="${s.id}">${round0(vol)}</span> kg
+              </div>
+
+              <button class="btn" data-action="rest-preset" data-sec="${App.state.settings.defaultRestSec}">
+                <i data-lucide="timer" style="width:16px;height:16px;"></i>
+                Timer
+              </button>
+            </div>
+          </div>
+        `;
+      }
+
+      function renderSessionExerciseCard(ex){
+        const selected = App.ui.activeSxId === ex.id;
+        return `
+          <div class="panel" style="padding:14px;">
+            <div class="row" style="justify-content: space-between; align-items:flex-start;">
+              <div class="stack" style="gap:6px; flex:1;">
+                <div class="row" style="justify-content: space-between;">
+                  <div class="row" style="gap:10px;">
+                    <button class="btn ${selected?'primary':''}" data-action="select-exercise" data-sxid="${ex.id}" title="Wybierz ćwiczenie (mobile)">
+                      <i data-lucide="focus" style="width:16px;height:16px;"></i>
+                      <span style="font-weight:800;">${escapeHtml(ex.name)}</span>
+                      <span class="badge">${escapeHtml(ex.category || '—')}</span>
+                    </button>
+                  </div>
+                  <div class="row">
+                    <button class="btn" data-action="set-add" data-sxid="${ex.id}">
+                      <i data-lucide="plus" style="width:16px;height:16px;"></i>
+                      Seria
+                    </button>
+                    <button class="btn danger" data-action="exercise-remove" data-sxid="${ex.id}">
+                      <i data-lucide="trash-2" style="width:16px;height:16px;"></i>
+                      Usuń ćw.
+                    </button>
+                  </div>
+                </div>
+
+                <div class="grid2">
+                  <div class="stack">
+                    <label class="small muted">Tempo (opcjonalnie)</label>
+                    <input class="input mono" value="${escapeHtml(ex.tempo||'')}" placeholder="np. 31X1" data-action="exercise-field" data-field="tempo" data-sxid="${ex.id}" />
+                  </div>
+                  <div class="stack">
+                    <label class="small muted">Notatki do ćwiczenia</label>
+                    <input class="input" value="${escapeHtml(ex.notes||'')}" placeholder="np. chwyt, ustawienie ławki..." data-action="exercise-field" data-field="notes" data-sxid="${ex.id}" />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="hr"></div>
+
+            <div class="desktop-only">
+              <div class="hscroll">
+                <table>
+                  <thead>
+                    <tr>
+                      <th style="min-width:180px;">Typ</th>
+                      <th style="min-width:120px;">Ciężar (kg)</th>
+                      <th style="min-width:120px;">Powt.</th>
+                      <th style="min-width:140px;">RPE/RIR</th>
+                      <th style="min-width:140px;">Objętość</th>
+                      <th style="min-width:160px;">Status</th>
+                      <th style="min-width:80px; text-align:right;">Usuń</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    ${ex.sets.map((s) => renderSetRow(ex.id, s)).join('')}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <div class="mobile-only stack" style="gap:10px;">
+              ${ex.sets.map((s, idx) => renderSetCard(ex.id, s, idx)).join('')}
+            </div>
+          </div>
+        `;
+      }
+
       function renderSessionView(){
         const sess = App.state.sessionActive;
 
@@ -1604,6 +2011,8 @@
           `;
         }
 
+        if (!App.ui.activeSxId && sess.exercises.length) App.ui.activeSxId = sess.exercises[0].id;
+
         const stats = computeSessionStats(sess);
         return `
           <div class="stack">
@@ -1655,9 +2064,6 @@
                         Zmień
                       </button>
                     </div>
-                    <div class="hr"></div>
-                    <div class="small muted">Tip: RPE/RIR</div>
-                    <div class="small muted">Wpisuj np. <span class="mono">8</span> (RPE) lub użyj 0–10. Trzymamy jedną liczbę (praktycznie i offline).</div>
                   </div>
                 </div>
               </div>
@@ -1681,126 +2087,9 @@
         `;
       }
 
-      function renderSessionExerciseCard(ex){
-        return `
-          <div class="panel" style="padding:14px;">
-            <div class="row" style="justify-content: space-between; align-items:flex-start;">
-              <div class="stack" style="gap:6px; flex:1;">
-                <div class="row" style="justify-content: space-between;">
-                  <div class="row" style="gap:10px;">
-                    <div class="badge cyan"><i data-lucide="focus" style="width:14px;height:14px;"></i><span>${escapeHtml(ex.name)}</span></div>
-                    <div class="badge">${escapeHtml(ex.category || '—')}</div>
-                  </div>
-                  <div class="row">
-                    <button class="btn" data-action="set-add" data-sxid="${ex.id}">
-                      <i data-lucide="plus" style="width:16px;height:16px;"></i>
-                      Seria
-                    </button>
-                    <button class="btn danger" data-action="exercise-remove" data-sxid="${ex.id}">
-                      <i data-lucide="trash-2" style="width:16px;height:16px;"></i>
-                      Usuń ćw.
-                    </button>
-                  </div>
-                </div>
-
-                <div class="grid2">
-                  <div class="stack">
-                    <label class="small muted">Tempo (opcjonalnie)</label>
-                    <input class="input mono" value="${escapeHtml(ex.tempo||'')}" placeholder="np. 31X1" data-action="exercise-field" data-field="tempo" data-sxid="${ex.id}" />
-                  </div>
-                  <div class="stack">
-                    <label class="small muted">Notatki do ćwiczenia</label>
-                    <input class="input" value="${escapeHtml(ex.notes||'')}" placeholder="np. chwyt, ustawienie ławki..." data-action="exercise-field" data-field="notes" data-sxid="${ex.id}" />
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div class="hr"></div>
-
-            <div class="hscroll">
-              <table>
-                <thead>
-                  <tr>
-                    <th style="min-width:180px;">Typ</th>
-                    <th style="min-width:120px;">Ciężar (kg)</th>
-                    <th style="min-width:120px;">Powt.</th>
-                    <th style="min-width:140px;">RPE/RIR</th>
-                    <th style="min-width:140px;">Objętość</th>
-                    <th style="min-width:160px;">Status</th>
-                    <th style="min-width:80px; text-align:right;">Usuń</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  ${ex.sets.map((s, idx) => renderSetRow(ex.id, s, idx)).join('')}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        `;
-      }
-
-      function statusBadge(status){
-        if (status === 'done') return `<span class="badge emerald"><i data-lucide="check-circle" style="width:14px;height:14px;"></i> Zrobione</span>`;
-        if (status === 'skipped') return `<span class="badge rose"><i data-lucide="x-circle" style="width:14px;height:14px;"></i> Ominięte</span>`;
-        return `<span class="badge"><i data-lucide="circle" style="width:14px;height:14px;"></i> Pending</span>`;
-      }
-
-      function renderSetRow(sxId, s, idx){
-        const vol = (safeNum(s.weight,0) * safeNum(s.reps,0));
-        return `
-          <tr>
-            <td>
-              <select class="select" style="padding:8px 10px;" data-action="set-field" data-field="type" data-sxid="${sxId}" data-setid="${s.id}">
-                <option value="work" ${s.type==='work'?'selected':''}>Robocza</option>
-                <option value="warmup" ${s.type==='warmup'?'selected':''}>Rozgrzewkowa</option>
-                <option value="dropset" ${s.type==='dropset'?'selected':''}>Dropset</option>
-                <option value="failure" ${s.type==='failure'?'selected':''}>Do upadku</option>
-              </select>
-            </td>
-            <td>
-              <input class="input mono" style="padding:8px 10px;" type="number" min="0" step="0.5"
-                value="${escapeHtml(s.weight ?? 0)}"
-                data-action="set-field" data-field="weight" data-sxid="${sxId}" data-setid="${s.id}" />
-            </td>
-            <td>
-              <input class="input mono" style="padding:8px 10px;" type="number" min="0" step="1"
-                value="${escapeHtml(s.reps ?? 0)}"
-                data-action="set-field" data-field="reps" data-sxid="${sxId}" data-setid="${s.id}" />
-            </td>
-            <td>
-              <input class="input mono" style="padding:8px 10px;" type="number" min="0" max="10" step="0.5"
-                value="${escapeHtml(s.rpe ?? 8)}"
-                data-action="set-field" data-field="rpe" data-sxid="${sxId}" data-setid="${s.id}" />
-            </td>
-            <td>
-              <span class="mono" data-role="set-tonnage" data-sxid="${sxId}" data-setid="${s.id}">${round0(vol)}</span>
-              <span class="muted small">kg</span>
-            </td>
-            <td>
-              <div class="row" style="justify-content: space-between;">
-                <button class="btn ${s.status==='done'?'good':s.status==='skipped'?'danger':''}"
-                  data-action="set-status" data-sxid="${sxId}" data-setid="${s.id}">
-                  ${statusBadge(s.status)}
-                </button>
-                <button class="btn" data-action="rest-preset" data-sec="${App.state.settings.defaultRestSec}" title="Start domyślnego odpoczynku">
-                  <i data-lucide="play" style="width:16px;height:16px;"></i>
-                </button>
-              </div>
-            </td>
-            <td style="text-align:right;">
-              <button class="btn danger" data-action="set-delete" data-sxid="${sxId}" data-setid="${s.id}" title="Usuń serię">
-                <i data-lucide="trash" style="width:16px;height:16px;"></i>
-              </button>
-            </td>
-          </tr>
-        `;
-      }
-
       function updateSessionComputedUI(){
         const sess = App.state.sessionActive;
         if (!sess) return;
-
         const stats = computeSessionStats(sess);
 
         const elT = document.getElementById('sessionTonnage');
@@ -1821,9 +2110,12 @@
         if (!ex) return;
         const s = ex.sets.find(x => x.id === setId);
         if (!s) return;
+
         const vol = safeNum(s.weight,0) * safeNum(s.reps,0);
-        const el = document.querySelector(`[data-role="set-tonnage"][data-sxid="${CSS.escape(sxId)}"][data-setid="${CSS.escape(setId)}"]`);
-        if (el) el.textContent = String(round0(vol));
+        document.querySelectorAll(
+          `[data-role="set-tonnage"][data-sxid="${CSS.escape(sxId)}"][data-setid="${CSS.escape(setId)}"]`
+        ).forEach(el => el.textContent = String(round0(vol)));
+
         updateSessionComputedUI();
       }
 
@@ -2094,7 +2386,6 @@
       // ----------------------------
       function renderProgressView(){
         const sum = computeThisWeekSummary();
-        const series = computeWeeklyVolumeSeries(8);
         const dist = computeMuscleDistributionThisWeek();
         return `
           <div class="stack">
@@ -2165,7 +2456,7 @@
                         <div class="badge mono">${round0(x.pct*100)}%</div>
                       </div>
                       <div style="height:10px; margin-top:10px; border-radius:999px; border:1px solid rgba(148,163,184,.14); background: rgba(2,6,23,.25); overflow:hidden;">
-                        <div style="height:100%; width:${Math.max(2, x.pct*100)}%; background: linear-gradient(90deg, rgba(34,211,238,.85), rgba(168,85,247,.55)); box-shadow: 0 0 0 1px rgba(34,211,238,.12);"></div>
+                        <div style="height:100%; width:${Math.max(2, x.pct*100)}%; background: linear-gradient(90deg, rgba(34,211,238,.85), rgba(168,85,247,.55));"></div>
                       </div>
                     </div>
                   `).join('')}
@@ -2211,7 +2502,7 @@
               <div class="row" style="justify-content: space-between;">
                 <div class="stack" style="gap:4px;">
                   <div class="badge purple"><i data-lucide="trophy" style="width:14px;height:14px;"></i><span>Rekordy / PR</span></div>
-                  <div class="small muted">PR liczone na podstawie wykonanych serii (status: Zrobione). Estymowane 1RM: Epley.</div>
+                  <div class="small muted">PR liczone z wykonanych serii (Zrobione). Estymowane 1RM: Epley.</div>
                 </div>
                 <div class="badge cyan mono">${App.state.history.length} treningów w historii</div>
               </div>
@@ -2228,16 +2519,12 @@
                 <div class="stack">
                   ${ach.map(a => `
                     <div class="panel soft" style="padding:12px;">
-                      <div class="row" style="justify-content: space-between;">
-                        <div class="stack" style="gap:4px; min-width:0;">
-                          <div class="badge ${a.unlocked?'emerald':'rose'}">
-                            <i data-lucide="${a.icon}" style="width:14px;height:14px;"></i>
-                            <span style="font-weight:800;">${escapeHtml(a.name)}</span>
-                            <span class="mono">${a.unlocked?'UNLOCKED':'LOCKED'}</span>
-                          </div>
-                          <div class="small muted">${escapeHtml(a.desc)}</div>
-                        </div>
+                      <div class="badge ${a.unlocked?'emerald':'rose'}">
+                        <i data-lucide="${a.icon}" style="width:14px;height:14px;"></i>
+                        <span style="font-weight:800;">${escapeHtml(a.name)}</span>
+                        <span class="mono">${a.unlocked?'UNLOCKED':'LOCKED'}</span>
                       </div>
+                      <div class="small muted" style="margin-top:6px;">${escapeHtml(a.desc)}</div>
                     </div>
                   `).join('')}
                 </div>
@@ -2594,7 +2881,6 @@
         const perSide = remaining / 2;
         if (outPer) outPer.textContent = String(round1(perSide));
 
-        // greedy
         const plates = [25,20,15,10,5,2.5,1.25];
         let left = perSide;
         const take = [];
@@ -2626,7 +2912,6 @@
         const w = clamp(round1(safeNum(document.getElementById('tdeeWeight')?.value, 80)), 35, 250);
         const act = safeNum(document.getElementById('tdeeAct')?.value, 1.55);
 
-        // Mifflin-St Jeor
         let bmr = 10*w + 6.25*h - 5*age;
         bmr += (sex === 'male') ? 5 : -161;
 
@@ -2642,7 +2927,7 @@
       }
 
       // ----------------------------
-      // Atlas view
+      // Atlas
       // ----------------------------
       function renderAtlasView(){
         const cats = ['Klatka','Plecy','Nogi','Barki','Biceps','Triceps','Brzuch'];
@@ -2656,7 +2941,7 @@
               <div class="row" style="justify-content: space-between;">
                 <div class="stack" style="gap:4px;">
                   <div class="badge cyan"><i data-lucide="book-open" style="width:14px;height:14px;"></i><span>Baza ćwiczeń (Atlas)</span></div>
-                  <div class="small muted">Wbudowane + własne. Własne ćwiczenia zapisują się na stałe w localStorage.</div>
+                  <div class="small muted">Wbudowane + własne. Własne ćwiczenia zapisują się w localStorage.</div>
                 </div>
                 <div class="badge purple mono">${rows.length} ćwiczeń</div>
               </div>
@@ -2791,7 +3076,7 @@
               <div class="row" style="justify-content: space-between;">
                 <div class="stack" style="gap:4px;">
                   <div class="badge cyan"><i data-lucide="hard-drive" style="width:14px;height:14px;"></i><span>Synchronizacja & kopia</span></div>
-                  <div class="small muted">Eksport/Import JSON przenosi całą bazę: ćwiczenia, plany, historię, aktywną sesję.</div>
+                  <div class="small muted">Eksport/Import JSON przenosi: ćwiczenia, plany, historię, aktywną sesję.</div>
                 </div>
                 <div class="badge purple mono">localStorage</div>
               </div>
@@ -2801,8 +3086,6 @@
               <div class="panel" style="padding:14px;">
                 <div class="badge emerald"><i data-lucide="download" style="width:14px;height:14px;"></i><span>Eksport</span></div>
                 <div class="hr"></div>
-                <div class="small muted">Pobiera plik JSON. Możesz wrzucić na telefon/PC i zaimportować.</div>
-                <div class="hr"></div>
                 <button class="btn primary" data-action="export-json">
                   <i data-lucide="download" style="width:16px;height:16px;"></i>
                   Eksportuj do JSON
@@ -2811,8 +3094,6 @@
 
               <div class="panel" style="padding:14px;">
                 <div class="badge rose"><i data-lucide="upload" style="width:14px;height:14px;"></i><span>Import</span></div>
-                <div class="hr"></div>
-                <div class="small muted">Import nadpisuje localStorage. Zrób export przed importem.</div>
                 <div class="hr"></div>
                 <button class="btn danger" data-action="open-import">
                   <i data-lucide="upload" style="width:16px;height:16px;"></i>
@@ -2837,6 +3118,31 @@
             </div>
           </div>
         `;
+      }
+
+      // ----------------------------
+      // View router
+      // ----------------------------
+      function renderView(){
+        const host = document.getElementById('view');
+        const route = App.ui.route;
+
+        if (route === 'session') host.innerHTML = renderSessionView();
+        else if (route === 'plans') host.innerHTML = renderPlansView();
+        else if (route === 'progress') host.innerHTML = renderProgressView();
+        else if (route === 'prs') host.innerHTML = renderPRsView();
+        else if (route === 'history') host.innerHTML = renderHistoryView();
+        else if (route === 'calculators') host.innerHTML = renderCalculatorsView();
+        else if (route === 'atlas') host.innerHTML = renderAtlasView();
+        else if (route === 'backup') host.innerHTML = renderBackupView();
+        else host.innerHTML = `<div class="panel" style="padding:14px;">Nieznany widok.</div>`;
+
+        if (route === 'progress') renderProgressCharts();
+        if (route === 'session') updateSessionComputedUI();
+        if (route === 'calculators'){
+          setTimeout(() => { calc1rmUI(); calcPlatesUI(); calcTDEEUI(); }, 0);
+        }
+        refreshIcons();
       }
 
       // ----------------------------
@@ -2941,9 +3247,6 @@
         refreshIcons();
       }
 
-      // ----------------------------
-      // Session start-from-plan dropdown wiring (in session view when no session)
-      // ----------------------------
       function syncStartPlanDayOptions(){
         const planSel = document.getElementById('startPlanSelect');
         const daySel = document.getElementById('startDaySelect');
@@ -2962,21 +3265,60 @@
         if (!btn) return;
         const a = btn.getAttribute('data-action');
 
-        // toasts
+        if (a === 'toggle-sidebar'){ toggleSidebar(); return; }
+        if (a === 'close-sidebar'){ closeSidebar(); return; }
+
         if (a === 'toast-close'){
           const id = btn.getAttribute('data-id');
-          const el = document.getElementById(id);
-          if (el) el.remove();
+          document.getElementById(id)?.remove();
           return;
         }
 
-        // nav
         if (a === 'nav'){
           setRoute(btn.getAttribute('data-route'));
           return;
         }
         if (a === 'go-session'){
           setRoute('session');
+          return;
+        }
+
+        if (a === 'select-exercise'){
+          App.ui.activeSxId = btn.getAttribute('data-sxid');
+          renderSessionActionBar();
+          render(); // to refresh highlight
+          return;
+        }
+
+        if (a === 'session-add-set-active'){
+          const sxId = App.ui.activeSxId;
+          if (!sxId || !App.state.sessionActive) return;
+          sessionAddSet(sxId);
+          render();
+          return;
+        }
+
+        if (a === 'step'){
+          const sxId = btn.getAttribute('data-sxid');
+          const setId = btn.getAttribute('data-setid');
+          const field = btn.getAttribute('data-field');
+          const delta = safeNum(btn.getAttribute('data-delta'), 0);
+
+          const sess = App.state.sessionActive;
+          if (!sess) return;
+          const ex = sess.exercises.find(x => x.id === sxId);
+          if (!ex) return;
+          const set = ex.sets.find(s => s.id === setId);
+          if (!set) return;
+
+          const cur = safeNum(set[field], field === 'rpe' ? 8 : 0);
+          const next = (field === 'weight' || field === 'rpe') ? round1(cur + delta) : round0(cur + delta);
+
+          sessionUpdateSetField(sxId, setId, field, next);
+          document.querySelectorAll(`[data-action="set-field"][data-field="${field}"][data-sxid="${CSS.escape(sxId)}"][data-setid="${CSS.escape(setId)}"]`)
+            .forEach(inp => inp.value = String(next));
+
+          updateSetRowComputed(sxId, setId);
           return;
         }
 
@@ -3005,14 +3347,20 @@
             App.state.settings.defaultRestSec = sec;
             saveStateDebounced();
             toast(`Ustawiono domyślny odpoczynek: ${sec}s`, 'success', 3000);
-            // rerender session header parts (where default shown)
-            if (App.ui.route === 'session') render();
           }
           startRestTimer(sec);
+          render();
           return;
         }
 
-        // session
+        // finish
+        if (a === 'finish-workout'){
+          const ok = confirm('Zakończyć trening i zapisać w historii?');
+          if (ok) finishWorkout();
+          return;
+        }
+
+        // new session
         if (a === 'quick-new-workout' || a === 'session-start-empty'){
           App.state.sessionActive = {
             id: uid('sess'),
@@ -3023,53 +3371,58 @@
             notes: '',
             exercises: []
           };
+          App.ui.activeSxId = null;
           saveStateDebounced();
           App.ui.route = 'session';
+          document.body.setAttribute('data-route', 'session');
           render();
           toast('Nowa sesja uruchomiona.', 'success', 2500);
           return;
         }
-        if (a === 'finish-workout'){
-          // confirmation (simple)
-          const ok = confirm('Zakończyć trening i zapisać w historii?');
-          if (ok) finishWorkout();
-          return;
-        }
+
         if (a === 'session-discard'){
           const ok = confirm('Porzucić aktywną sesję? Dane sesji zostaną utracone (historia bez zmian).');
           if (!ok) return;
           App.state.sessionActive = null;
+          App.ui.activeSxId = null;
           skipRestTimer();
           saveStateDebounced();
           render();
           toast('Sesja porzucona.', 'warn', 3000);
           return;
         }
+
         if (a === 'session-add-exercise'){
           App.ui.picker = { mode:'session', planId:null, dayId:null };
           openExercisePicker('Dodaj do sesji');
           return;
         }
+
         if (a === 'exercise-remove'){
           sessionRemoveExercise(btn.getAttribute('data-sxid'));
           render();
           toast('Usunięto ćwiczenie z sesji.', 'warn', 2500);
           return;
         }
+
         if (a === 'set-add'){
-          sessionAddSet(btn.getAttribute('data-sxid'));
+          const sxId = btn.getAttribute('data-sxid');
+          App.ui.activeSxId = sxId;
+          sessionAddSet(sxId);
           render();
           return;
         }
+
         if (a === 'set-delete'){
           sessionDeleteSet(btn.getAttribute('data-sxid'), btn.getAttribute('data-setid'));
           render();
           toast('Usunięto serię.', 'warn', 2000);
           return;
         }
+
         if (a === 'set-status'){
+          App.ui.activeSxId = btn.getAttribute('data-sxid');
           sessionToggleSetStatus(btn.getAttribute('data-sxid'), btn.getAttribute('data-setid'));
-          // no full render required, but status button template is complex -> rerender current view for correctness
           render();
           return;
         }
@@ -3093,7 +3446,7 @@
           return;
         }
 
-        // plans
+        // plans actions
         if (a === 'plan-create'){
           const p = planCreate('Nowy plan');
           App.ui.planEditorId = p.id;
@@ -3156,7 +3509,7 @@
           return;
         }
 
-        // session start from plan (route session no active)
+        // session start from plan (empty session screen)
         if (a === 'session-start-from-plan'){
           const planSel = document.getElementById('startPlanSelect');
           const daySel = document.getElementById('startDaySelect');
@@ -3195,18 +3548,9 @@
         }
 
         // calculators
-        if (a === 'calc-1rm'){
-          calc1rmUI();
-          return;
-        }
-        if (a === 'calc-plates'){
-          calcPlatesUI();
-          return;
-        }
-        if (a === 'calc-tdee'){
-          calcTDEEUI();
-          return;
-        }
+        if (a === 'calc-1rm'){ calc1rmUI(); return; }
+        if (a === 'calc-plates'){ calcPlatesUI(); return; }
+        if (a === 'calc-tdee'){ calcTDEEUI(); return; }
 
         // atlas
         if (a === 'atlas-add-custom'){
@@ -3227,7 +3571,6 @@
           App.state.exercises.push({ id: uid('ex'), source:'custom', name, category, primary, alts, desc });
           saveStateDebounced();
 
-          // clear
           document.getElementById('customExName').value = '';
           document.getElementById('customExAlts').value = '';
           document.getElementById('customExDesc').value = '';
@@ -3247,7 +3590,6 @@
           if (!ok) return;
           App.state.exercises = App.state.exercises.filter(e => e.id !== id);
 
-          // Also clean from plans + active session
           for (const p of App.state.plans){
             for (const d of p.days){
               d.exercises = d.exercises.filter(px => (px.exerciseName||'') !== ex.name);
@@ -3277,24 +3619,20 @@
               notes: '',
               exercises: []
             };
+            App.ui.activeSxId = null;
           }
           sessionAddExercise(btn.getAttribute('data-exid'));
           saveStateDebounced();
           toast('Dodano do sesji.', 'success', 2000);
           App.ui.route = 'session';
+          document.body.setAttribute('data-route', 'session');
           render();
           return;
         }
 
         // backup
-        if (a === 'export-json'){
-          exportJSON();
-          return;
-        }
-        if (a === 'open-import'){
-          document.getElementById('importDialog').showModal();
-          return;
-        }
+        if (a === 'export-json'){ exportJSON(); return; }
+        if (a === 'open-import'){ document.getElementById('importDialog').showModal(); return; }
         if (a === 'import-json'){
           const file = document.getElementById('importFile')?.files?.[0];
           if (!file){
@@ -3312,7 +3650,9 @@
           App.ui.route = 'session';
           App.ui.planEditorId = null;
           App.ui.historyExpanded = new Set();
+          App.ui.activeSxId = null;
           skipRestTimer();
+          document.body.setAttribute('data-route', 'session');
           render();
           toast('Reset zakończony.', 'success', 3000);
           return;
@@ -3324,12 +3664,12 @@
         if (!el) return;
         const a = el.getAttribute('data-action');
 
-        // session fields
         if (a === 'session-name'){
           if (!App.state.sessionActive) return;
           App.state.sessionActive.name = String(el.value || '');
           saveStateDebounced();
           renderHeader();
+          renderSessionActionBar();
           return;
         }
         if (a === 'session-notes'){
@@ -3351,10 +3691,8 @@
           return;
         }
 
-        // plans editor fields
         if (a === 'plan-field'){
           planUpdateField(el.getAttribute('data-planid'), el.getAttribute('data-field'), el.value);
-          renderHeader();
           return;
         }
         if (a === 'plan-day-field'){
@@ -3366,19 +3704,14 @@
           return;
         }
 
-        // picker filters
         if (e.target.id === 'pickerSearch' || e.target.id === 'pickerCategory'){
           renderPickerRows();
           return;
         }
-
-        // session start plan dropdown
         if (e.target.id === 'startPlanSelect'){
           syncStartPlanDayOptions();
           return;
         }
-
-        // atlas filters
         if (e.target.id === 'atlasSearch' || e.target.id === 'atlasCat'){
           atlasApplyFilters();
           return;
@@ -3390,31 +3723,19 @@
       // ----------------------------
       function boot(){
         ensureTick();
+        document.body.setAttribute('data-route', App.ui.route);
 
-        // initial render
         render();
 
-        // session start from plan dropdown init (when no session)
-        setTimeout(() => {
-          syncStartPlanDayOptions();
-        }, 0);
+        setTimeout(() => syncStartPlanDayOptions(), 0);
 
-        // calculators initial
-        setTimeout(() => {
-          if (document.getElementById('calc1rmW')) calc1rmUI();
-          if (document.getElementById('platesTarget')) calcPlatesUI();
-          if (document.getElementById('tdeeSex')) calcTDEEUI();
-        }, 0);
-
-        // keep storage indicator OK
         setStorageIndicator('OK', 'cyan');
 
-        // show small hint once
         try{
-          const key = 'ironforgepro.hint.v1';
+          const key = 'ironforgepro.hint.mobile.v1';
           if (!localStorage.getItem(key)){
             localStorage.setItem(key, '1');
-            toast('Tip: Kliknij "Zrobione" przy serii — timer odpoczynku startuje automatycznie.', 'info', 7000);
+            toast('Mobile tip: wybierz ćwiczenie → sticky bar pozwala szybko dodawać serie.', 'info', 6000);
           }
         }catch(_){}
 
@@ -3423,16 +3744,17 @@
 
       boot();
 
+      // ----------------------------
+      // PWA Service Worker registration (optional)
+      // ----------------------------
+      try{
+        if ('serviceWorker' in navigator){
+          window.addEventListener('load', () => {
+            navigator.serviceWorker.register('./sw.js').catch(()=>{});
+          });
+        }
+      }catch(_){}
     })();
   </script>
-<script>
-<script>
-  if ("serviceWorker" in navigator) {
-    window.addEventListener("load", () => {
-      navigator.serviceWorker.register("./sw.js");
-    });
-  }
-</script>
 </body>
 </html>
-```
