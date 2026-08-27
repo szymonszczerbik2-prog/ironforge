@@ -1,4 +1,4 @@
-const CACHE = "ironforgepro-cache-v2";
+const CACHE = "ironforgepro-cache-v3";
 
 const PRECACHE = [
   "./",
